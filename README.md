@@ -4,7 +4,7 @@ Module base on [![GIN](https://github.com/gin-gonic/gin)](https://github.com/gin
 
 A basic example:
 
-## EXAMPLE
+### EXAMPLE
 ```go
 package main
 

@@ -1,4 +1,4 @@
-package ginfastapi
+package gintonic
 
 import (
 	"encoding/json"

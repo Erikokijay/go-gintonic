@@ -1,4 +1,4 @@
-package ginfastapi
+package gintonic
 
 type ConfigSchema struct {
 	SwaggerUrl  string `json:"swaggerUrl"`
