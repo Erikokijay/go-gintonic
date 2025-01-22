@@ -1,9 +1,10 @@
-#GO-GINTONIC
+# GO-GINTONIC
 
 Module base on [![GIN](https://github.com/gin-gonic/gin)](https://github.com/gin-gonic/gin)
 
 A basic example:
 
+## EXAMPLE
 ```go
 package main
 
