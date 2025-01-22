@@ -1,4 +1,4 @@
-module github.com/eriko_kijay/go-gintonic
+module github.com/Erikokijay/go-gintonic
 
 go 1.23.4
 
