@@ -12,7 +12,7 @@ import (
   "net/http"
 
   "github.com/gin-gonic/gin"
-  "github.com/eriko_kijay/go-gintonic"
+  "github.com/Erikokijay/go-gintonic"
 )
 
 type ExampleResponse struct {
