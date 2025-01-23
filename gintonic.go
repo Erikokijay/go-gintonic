@@ -2,12 +2,16 @@ package gintonic
 
 import "github.com/gin-gonic/gin"
 
-type GinFastApi struct {
+type GinTonic struct {
 	eng  *gin.Engine
 	conf *ConfigSchema
 }
 
-func NewServer(conf *ConfigSchema) *GinFastApi {
+type Router struct {
+	gin.RouterGroup
+}
+
+func NewServer(conf *ConfigSchema) *GinTonic {
 
 	if conf == nil {
 		conf = &ConfigSchema{
@@ -16,7 +20,7 @@ func NewServer(conf *ConfigSchema) *GinFastApi {
 		}
 	}
 
-	res := &GinFastApi{}
+	res := &GinTonic{}
 
 	res.conf = conf
 	gin.SetMode(conf.Mode)
@@ -28,24 +32,26 @@ func NewServer(conf *ConfigSchema) *GinFastApi {
 	return res
 }
 
-func (g *GinFastApi) Use(handlers gin.HandlerFunc) {
+func SimpleWrapper() {} // TODO:
+
+func (g *GinTonic) Use(handlers gin.HandlerFunc) {
 	g.eng.Use(handlers)
 }
 
-func (g *GinFastApi) GET(path string, handler interface{}, configs ...interface{}) {
-	g.eng.GET(path, WrapHandler(handler, "GET", configs))
+func (g *GinTonic) GET(path string, handler interface{}, configs ...interface{}) {
+	g.eng.GET(path, WrapHandler(path, handler, "GET", configs...))
 }
-func (g *GinFastApi) POST(path string, handler interface{}, configs ...interface{}) {
-	g.eng.POST(path, WrapHandler(handler, "POST", configs))
+func (g *GinTonic) POST(path string, handler interface{}, configs ...interface{}) {
+	g.eng.POST(path, WrapHandler(path, handler, "POST", configs...))
 }
-func (g *GinFastApi) PUT(path string, handler interface{}, configs ...interface{}) {
-	g.eng.PUT(path, WrapHandler(handler, "PUT", configs))
+func (g *GinTonic) PUT(path string, handler interface{}, configs ...interface{}) {
+	g.eng.PUT(path, WrapHandler(path, handler, "PUT", configs...))
 }
-func (g *GinFastApi) DELETE(path string, handler interface{}, configs ...interface{}) {
-	g.eng.DELETE(path, WrapHandler(handler, "DELETE", configs))
+func (g *GinTonic) DELETE(path string, handler interface{}, configs ...interface{}) {
+	g.eng.DELETE(path, WrapHandler(path, handler, "DELETE", configs...))
 }
 
-func (g *GinFastApi) Run(host string) {
-	generateSwagger(g.conf)
+func (g *GinTonic) Run(host string) {
+	GenerateSwagger(g.conf)
 	g.eng.Run(host)
 }

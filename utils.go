@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,6 +14,10 @@ import (
 func generateSchema(t reflect.Type) map[string]interface{} {
 	schema := map[string]interface{}{
 		"type": "object",
+	}
+
+	if t.Kind() != reflect.Struct {
+		return nil
 	}
 
 	numFields := t.NumField()
@@ -25,6 +30,13 @@ func generateSchema(t reflect.Type) map[string]interface{} {
 
 		if jsonTag != "" {
 			fieldType := field.Type.Kind().String()
+
+			if fieldType == "int" {
+				fieldType = "integer"
+			}
+			if strings.Contains(fieldType, "float") {
+				fieldType = "number"
+			}
 
 			properties[jsonTag] = map[string]interface{}{
 				"type": fieldType,
@@ -47,8 +59,9 @@ func generateParametres(t reflect.Type) []Parameter {
 	numFields := t.NumField()
 
 	for i := 0; i < numFields; i++ {
+
 		field := t.Field(i)
-		queryTag := field.Tag.Get("query")
+		queryTag := field.Tag.Get("form")
 
 		if queryTag != "" {
 
@@ -80,74 +93,74 @@ type ApiRoute struct {
 
 var routes []ApiRoute = []ApiRoute{}
 
-func WrapHandler(handler interface{}, method string, configs ...interface{}) gin.HandlerFunc {
+func WrapHandler(path string, handler interface{}, method string, configs ...interface{}) gin.HandlerFunc {
+
+	handlerType := reflect.TypeOf(handler)
+	handlerValue := reflect.ValueOf(handler)
+
+	if handlerType.Kind() != reflect.Func {
+		panic("Handler is not a function")
+	}
+
+	numIn := handlerType.NumIn()
+	if numIn != 2 {
+		panic("Handler must have exactly 2 input parameters (gin.Context, interface{})")
+	}
+
+	if handlerType.In(0) != reflect.TypeOf((*gin.Context)(nil)) {
+		panic("First parameter must be *gin.Context")
+	}
+
+	dataType := handlerType.In(1)
+	dataValue := reflect.New(dataType).Interface()
+
+	// Добавляем маршрут в список маршрутов
+	route := ApiRoute{
+		Path:      path,
+		InType:    dataType,
+		Method:    strings.ToLower(method),
+		Responses: map[int]interface{}{},
+	}
+
+	for _, conf := range configs {
+		if reflect.TypeOf(conf).Name() == "ResultInfo" {
+			res := conf.(ResultInfo)
+			route.Responses[res.Code] = reflect.TypeOf(res.Output)
+		} else if reflect.TypeOf(conf).Name() == "RouteInfo" {
+			route.Info = conf.(RouteInfo)
+		}
+	}
+
+	if handlerType.NumOut() == 1 {
+		route.Responses[200] = handlerType.Out(0).Elem()
+	}
+
+	routes = append(routes, route)
+
 	return func(c *gin.Context) {
-
-		handlerType := reflect.TypeOf(handler)
-		handlerValue := reflect.ValueOf(handler)
-
-		if handlerType.Kind() != reflect.Func {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Handler is not a function"})
-			return
-		}
-
-		numIn := handlerType.NumIn()
-		if numIn != 2 {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Handler must have exactly 2 input parameters"})
-			return
-		}
-
-		if handlerType.In(0) != reflect.TypeOf((*gin.Context)(nil)) {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "First parameter must be *gin.Context"})
-			return
-		}
-
-		dataType := handlerType.In(1)
-		dataValue := reflect.New(dataType).Elem()
-
-		// Демаршалинг JSON из тела запроса в dataValue
-		if err := c.ShouldBindJSON(dataValue.Addr().Interface()); err != nil {
+		if err := c.ShouldBind(dataValue); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
 		// Создаем слайс для входных параметров
-		inValues := []reflect.Value{reflect.ValueOf(c), dataValue}
+		inValues := []reflect.Value{reflect.ValueOf(c), reflect.ValueOf(dataValue).Elem()}
 
 		// Вызываем функцию с входными параметрами
 		outValues := handlerValue.Call(inValues)
 
 		// Проверяем, что функция возвращает один параметр
-		if len(outValues) < 1 {
+		if len(outValues) != 1 {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Handler must return exactly one value"})
 			return
 		}
 
 		// Возвращаем результат
 		c.JSON(http.StatusOK, outValues[0].Interface())
-
-		route := ApiRoute{
-			Path:   c.FullPath(),
-			InType: dataType,
-			Method: method,
-		}
-
-		for _, conf := range configs {
-			if reflect.TypeOf(conf).Name() == "ResultInfo" {
-				res := conf.(ResultInfo)
-				route.Responses[res.Code] = res.Output
-			} else if reflect.TypeOf(conf).Name() == "RouteInfo" {
-				route.Info = conf.(RouteInfo)
-			}
-		}
-
-		routes = append(routes, route)
-		// Генерируем OpenAPI спецификацию
-		//generateOpenAPI(c.FullPath(), handlerType, dataType, handlerType.Out(0))
 	}
 }
 
-func generateSwagger(conf *ConfigSchema) {
+func GenerateSwagger(conf *ConfigSchema) {
 	openAPI := OpenAPI{
 		OpenAPI: "3.1.0",
 		Info: Info{
@@ -155,6 +168,8 @@ func generateSwagger(conf *ConfigSchema) {
 			Description: conf.Description,
 			Version:     conf.Version,
 		},
+		Paths:      Paths{},
+		Components: Components{Schemas: map[string]Schema{}},
 	}
 
 	for _, route := range routes {
@@ -167,13 +182,16 @@ func generateSwagger(conf *ConfigSchema) {
 			Tags:        route.Info.Tags,
 		}
 
-		operation.RequestBody = &RequestBody{
-			Required: true,
-			Content: map[string]MediaType{
-				"application/json": {
-					Schema: Schema{"$ref": "#/components/schemas/" + route.InType.(reflect.Type).Name()},
+		if route.Method != "get" && route.Method != "delete" {
+
+			operation.RequestBody = &RequestBody{
+				Required: true,
+				Content: map[string]MediaType{
+					"application/json": {
+						Schema: Schema{"$ref": "#/components/schemas/" + route.InType.(reflect.Type).Name()},
+					},
 				},
-			},
+			}
 		}
 
 		operation.Parameters = generateParametres(route.InType.(reflect.Type))
@@ -182,6 +200,7 @@ func generateSwagger(conf *ConfigSchema) {
 		operation.Responses = map[string]Response{}
 
 		for code, response := range route.Responses {
+
 			operation.Responses[fmt.Sprintf("%d", code)] = Response{
 				Description: response.(reflect.Type).Name(),
 				Content: map[string]MediaType{
@@ -199,7 +218,7 @@ func generateSwagger(conf *ConfigSchema) {
 		//openAPI["paths"].(map[string]interface{})[route.Path].(map[string]interface{})[route.Method].(map[string]interface{})["summary"] = route.Info
 	}
 
-	file, err := os.Create("openapi.json")
+	file, err := os.Create("static/openapi.json")
 	if err != nil {
 		fmt.Println("Error creating openapi.json:", err)
 		return
@@ -260,7 +279,7 @@ func generateOpenAPI(path string, handlerType reflect.Type, inType reflect.Type,
 	}
 
 	// Записываем OpenAPI спецификацию в файл
-	file, err := os.Create("openapi.json")
+	file, err := os.Create("static/openapi.json")
 	if err != nil {
 		fmt.Println("Error creating openapi.json:", err)
 		return
