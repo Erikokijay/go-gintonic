@@ -93,7 +93,9 @@ type ApiRoute struct {
 
 var routes []ApiRoute = []ApiRoute{}
 
-func WrapHandler(path string, handler interface{}, method string, configs ...interface{}) gin.HandlerFunc {
+// SimpleWrapper - create simple wrapper for gin handler, to validate data and create swagger.
+// path - route full path, handler - handler function, method - http method (GET, PUT, DELETE, POST), configs - ...RouteInfo, ...ResultInfo
+func SimpleWrapper(path string, handler interface{}, method string, configs ...interface{}) gin.HandlerFunc {
 
 	handlerType := reflect.TypeOf(handler)
 	handlerValue := reflect.ValueOf(handler)
@@ -232,6 +234,7 @@ func GenerateSwagger(conf *ConfigSchema) {
 	}
 }
 
+/*
 func generateOpenAPI(path string, handlerType reflect.Type, inType reflect.Type, outType reflect.Type) {
 	openAPI := map[string]interface{}{
 		"openapi": "3.1.0",
@@ -291,4 +294,4 @@ func generateOpenAPI(path string, handlerType reflect.Type, inType reflect.Type,
 	if err := encoder.Encode(openAPI); err != nil {
 		fmt.Println("Error encoding openapi.json:", err)
 	}
-}
+}*/
