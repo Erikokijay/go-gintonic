@@ -105,8 +105,8 @@ func SimpleWrapper(path string, handler interface{}, method string, configs ...i
 	}
 
 	numIn := handlerType.NumIn()
-	if numIn != 2 {
-		panic("Handler must have exactly 2 input parameters (gin.Context, interface{})")
+	if numIn < 1 {
+		panic("Handler must have exactly 1 input parameters (gin.Context), recomend (gin.Context, interface{})")
 	}
 
 	if handlerType.In(0) != reflect.TypeOf((*gin.Context)(nil)) {
