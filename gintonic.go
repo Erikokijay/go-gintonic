@@ -20,8 +20,8 @@ func Config(conf *ConfigSchema, eng *gin.Engine) {
 		}
 	}
 
-	eng.StaticFile(conf.SwaggerUrl, "./static/swagger.html")
-	eng.StaticFile("/openapi.json", "./static/openapi.json")
+	eng.StaticFile(conf.SwaggerUrl, "./docs/swagger.html")
+	eng.StaticFile("/openapi.json", "./docs/openapi.json")
 }
 
 func NewServer(conf *ConfigSchema) *GinTonic {
@@ -39,8 +39,8 @@ func NewServer(conf *ConfigSchema) *GinTonic {
 	gin.SetMode(conf.Mode)
 	res.eng = gin.Default()
 
-	res.eng.StaticFile(conf.SwaggerUrl, "./static/swagger.html")
-	res.eng.StaticFile("/openapi.json", "./static/openapi.json")
+	res.eng.StaticFile(conf.SwaggerUrl, "./docs/swagger.html")
+	res.eng.StaticFile("/openapi.json", "./docs/openapi.json")
 
 	return res
 }
@@ -58,7 +58,6 @@ func (gnt *GinTonic) Group(path string) *Router {
 
 func (g *GinTonic) Use(handlers gin.HandlerFunc) {
 	g.eng.Use(handlers)
-
 }
 
 func (g *GinTonic) GET(path string, handler interface{}, configs ...interface{}) {

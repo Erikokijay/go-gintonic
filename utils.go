@@ -114,7 +114,7 @@ func SimpleWrapper(path string, handler interface{}, method string, configs ...i
 	}
 
 	dataType := handlerType.In(1)
-	dataValue := reflect.New(dataType).Interface()
+	//dataValue := reflect.New(dataType).Interface()
 
 	// Добавляем маршрут в список маршрутов
 	route := ApiRoute{
@@ -140,13 +140,17 @@ func SimpleWrapper(path string, handler interface{}, method string, configs ...i
 	routes = append(routes, route)
 
 	return func(c *gin.Context) {
-		if err := c.ShouldBind(dataValue); err != nil {
+
+		myType := handlerType.In(1)
+		myValue := reflect.New(myType).Interface()
+
+		if err := c.ShouldBind(myValue); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
 		// Создаем слайс для входных параметров
-		inValues := []reflect.Value{reflect.ValueOf(c), reflect.ValueOf(dataValue).Elem()}
+		inValues := []reflect.Value{reflect.ValueOf(c), reflect.ValueOf(myValue).Elem()}
 
 		// Вызываем функцию с входными параметрами
 		outValues := handlerValue.Call(inValues)
@@ -220,7 +224,7 @@ func GenerateSwagger(conf *ConfigSchema) {
 		//openAPI["paths"].(map[string]interface{})[route.Path].(map[string]interface{})[route.Method].(map[string]interface{})["summary"] = route.Info
 	}
 
-	file, err := os.Create("static/openapi.json")
+	file, err := os.Create("docs/openapi.json")
 	if err != nil {
 		fmt.Println("Error creating openapi.json:", err)
 		return
@@ -232,6 +236,74 @@ func GenerateSwagger(conf *ConfigSchema) {
 	if err := encoder.Encode(openAPI); err != nil {
 		fmt.Println("Error encoding openapi.json:", err)
 	}
+
+	SaveHTML()
+
+}
+
+func SaveHTML() {
+	sv := `<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Swagger UI</title>
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist/swagger-ui.css" />
+    <style>
+        html {
+            box-sizing: border-box;
+            overflow: -moz-scrollbars-vertical;
+            overflow-y: scroll;
+        }
+
+        *,
+        *:before,
+        *:after {
+            box-sizing: inherit;
+        }
+
+        body {
+            margin: 0;
+            background: #fafafa;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
+    <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-standalone-preset.js"></script>
+    <script>
+        window.onload = function () {
+            const ui = SwaggerUIBundle({
+                url: "/openapi.json",
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                layout: "StandaloneLayout"
+            })
+
+            window.ui = ui
+
+            document.getElementsByClassName("topbar")[0].style.display = "none"
+        }
+    </script>
+</body>
+
+</html>`
+
+	file, err := os.Create("docs/swagger.html")
+	if err != nil {
+		fmt.Println("Error creating swagger.html:", err)
+		return
+	}
+	defer file.Close()
+
+	file.WriteString(sv)
+
 }
 
 /*
