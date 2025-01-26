@@ -12,8 +12,15 @@ import (
 )
 
 func generateSchema(t reflect.Type) map[string]interface{} {
+
 	schema := map[string]interface{}{
 		"type": "object",
+	}
+
+	if t.Kind() == reflect.Slice || t.Kind() == reflect.Array {
+		schema["type"] = "array"
+		schema["items"] = generateSchema(t.Elem())
+		return schema
 	}
 
 	if t.Kind() != reflect.Struct {
@@ -27,22 +34,40 @@ func generateSchema(t reflect.Type) map[string]interface{} {
 	for i := 0; i < numFields; i++ {
 		field := t.Field(i)
 		jsonTag := field.Tag.Get("json")
+		//form := field.Tag.Get("form")
 
 		if jsonTag != "" {
-			fieldType := field.Type.Kind().String()
+			fieldType := field.Type
+			fieldKind := fieldType.Kind()
+			fieldTypeStr := fieldKind.String()
 
-			if fieldType == "int" {
-				fieldType = "integer"
-			}
-			if strings.Contains(fieldType, "float") {
-				fieldType = "number"
+			if fieldKind == reflect.Struct {
+				properties[jsonTag] = generateSchema(fieldType)
+			} else if fieldKind == reflect.Slice || fieldKind == reflect.Array {
+				fieldTypeStr = "array"
+				properties[jsonTag] = map[string]interface{}{
+					"type":  fieldTypeStr,
+					"items": generateSchema(fieldType.Elem()),
+				}
+			} else if fieldKind == reflect.Map {
+				fieldTypeStr = "object"
+				properties[jsonTag] = map[string]interface{}{
+					"type":                 fieldTypeStr,
+					"additionalProperties": generateSchema(fieldType.Elem()),
+				}
+			} else {
+				if fieldTypeStr == "int" {
+					fieldTypeStr = "integer"
+				}
+				if strings.Contains(fieldTypeStr, "float") {
+					fieldTypeStr = "number"
+				}
+				properties[jsonTag] = map[string]interface{}{
+					"type": fieldTypeStr,
+				}
 			}
 
-			properties[jsonTag] = map[string]interface{}{
-				"type": fieldType,
-			}
-
-			if field.Tag.Get("requeuired") == "true" {
+			if field.Tag.Get("binding") == "required" {
 				requireds = append(requireds, jsonTag)
 			}
 		}
@@ -62,8 +87,9 @@ func generateParametres(t reflect.Type) []Parameter {
 
 		field := t.Field(i)
 		queryTag := field.Tag.Get("form")
+		jsonTag := field.Tag.Get("json")
 
-		if queryTag != "" {
+		if queryTag != "" && jsonTag == "" {
 
 			param := Parameter{}
 
@@ -71,7 +97,7 @@ func generateParametres(t reflect.Type) []Parameter {
 
 			param.Name = queryTag
 			param.In = "query"
-			param.Required = field.Tag.Get("requeuired") == "true"
+			param.Required = field.Tag.Get("binding") == "required"
 			param.Schema = map[string]interface{}{
 				"type": fieldType,
 			}
@@ -113,7 +139,10 @@ func SimpleWrapper(path string, handler interface{}, method string, configs ...i
 		panic("First parameter must be *gin.Context")
 	}
 
-	dataType := handlerType.In(1)
+	var dataType reflect.Type
+	if numIn == 2 {
+		dataType = handlerType.In(1)
+	}
 	//dataValue := reflect.New(dataType).Interface()
 
 	// Добавляем маршрут в список маршрутов
@@ -137,6 +166,10 @@ func SimpleWrapper(path string, handler interface{}, method string, configs ...i
 		route.Responses[200] = handlerType.Out(0).Elem()
 	}
 
+	if route.Info.Title == "" {
+		route.Info.Title = handlerType.Name()
+	}
+
 	routes = append(routes, route)
 
 	return func(c *gin.Context) {
@@ -152,17 +185,26 @@ func SimpleWrapper(path string, handler interface{}, method string, configs ...i
 		// Создаем слайс для входных параметров
 		inValues := []reflect.Value{reflect.ValueOf(c), reflect.ValueOf(myValue).Elem()}
 
-		// Вызываем функцию с входными параметрами
 		outValues := handlerValue.Call(inValues)
 
 		// Проверяем, что функция возвращает один параметр
-		if len(outValues) != 1 {
+		if len(outValues) != 1 && len(outValues) != 2 {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Handler must return exactly one value"})
 			return
 		}
 
 		// Возвращаем результат
-		c.JSON(http.StatusOK, outValues[0].Interface())
+		if len(outValues) == 1 {
+			c.JSON(http.StatusOK, outValues[0].Interface())
+		} else {
+
+			if outValues[0].Kind() != reflect.Int {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Handler must return status code"})
+				return
+			}
+
+			c.JSON(outValues[0].Interface().(int), outValues[1].Interface())
+		}
 	}
 }
 
@@ -188,7 +230,7 @@ func GenerateSwagger(conf *ConfigSchema) {
 			Tags:        route.Info.Tags,
 		}
 
-		if route.Method != "get" && route.Method != "delete" {
+		if route.Method != "get" && route.Method != "delete" && route.InType != nil {
 
 			operation.RequestBody = &RequestBody{
 				Required: true,
@@ -200,22 +242,39 @@ func GenerateSwagger(conf *ConfigSchema) {
 			}
 		}
 
-		operation.Parameters = generateParametres(route.InType.(reflect.Type))
-		openAPI.Components.Schemas[route.InType.(reflect.Type).Name()] = generateSchema(route.InType.(reflect.Type))
+		if route.InType != nil {
+			name := ""
+			if route.InType.(reflect.Type).Kind() == reflect.Slice {
+				name = "Ar" + route.InType.(reflect.Type).Elem().Name()
+			} else {
+				name = route.InType.(reflect.Type).Name()
+			}
+			operation.Parameters = generateParametres(route.InType.(reflect.Type))
+			openAPI.Components.Schemas[name] = generateSchema(route.InType.(reflect.Type))
+		}
 
 		operation.Responses = map[string]Response{}
 
 		for code, response := range route.Responses {
 
-			operation.Responses[fmt.Sprintf("%d", code)] = Response{
-				Description: response.(reflect.Type).Name(),
-				Content: map[string]MediaType{
-					"application/json": {
-						Schema: Schema{"$ref": "#/components/schemas/" + response.(reflect.Type).Name()},
+			if response.(reflect.Type).Kind() == reflect.Array || response.(reflect.Type).Kind() == reflect.Struct || response.(reflect.Type).Kind() == reflect.Slice {
+				name := ""
+				if response.(reflect.Type).Kind() == reflect.Slice {
+					name = "Ar" + response.(reflect.Type).Elem().Name()
+				} else {
+					name = response.(reflect.Type).Name()
+				}
+
+				operation.Responses[fmt.Sprintf("%d", code)] = Response{
+					Description: name,
+					Content: map[string]MediaType{
+						"application/json": {
+							Schema: Schema{"$ref": "#/components/schemas/" + name},
+						},
 					},
-				},
+				}
+				openAPI.Components.Schemas[name] = generateSchema(response.(reflect.Type))
 			}
-			openAPI.Components.Schemas[response.(reflect.Type).Name()] = generateSchema(response.(reflect.Type))
 		}
 
 		path[route.Method] = operation

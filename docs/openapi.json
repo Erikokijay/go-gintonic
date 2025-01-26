@@ -1,0 +1,176 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Test",
+    "description": "",
+    "version": ""
+  },
+  "paths": {
+    "/api/bbb/get": {
+      "post": {
+        "tags": [
+          "Test"
+        ],
+        "summary": "Route Title",
+        "description": "Route Description",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Req2"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ArResp",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArResp"
+                }
+              }
+            }
+          }
+        },
+        "security": null
+      }
+    },
+    "/api/get": {
+      "post": {
+        "tags": [
+          "Test"
+        ],
+        "summary": "Route Title",
+        "description": "Route Description",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Req2"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ArResp",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArResp"
+                }
+              }
+            }
+          }
+        },
+        "security": null
+      }
+    },
+    "/api/test": {
+      "get": {
+        "tags": [
+          "Test"
+        ],
+        "summary": "Route Titlttte",
+        "description": "Route Description",
+        "responses": {
+          "200": {
+            "description": "ArReq2",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArReq2"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Req2",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Req2"
+                }
+              }
+            }
+          }
+        },
+        "security": null
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ArReq2": {
+        "items": {
+          "properties": {
+            "code": {
+              "type": "integer"
+            },
+            "msg": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code"
+          ],
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "ArResp": {
+        "items": {
+          "properties": {
+            "code": {
+              "type": "integer"
+            },
+            "data": {
+              "items": {
+                "properties": {
+                  "code": {
+                    "type": "integer"
+                  },
+                  "msg": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "msg": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code"
+          ],
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "Req2": {
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "msg": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": null
+  }
+}

@@ -1,25 +1,24 @@
 package gintonic
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 )
 
 type Resp struct {
-	Code int    `json:"code"`
+	Code int    `json:"code" binding:"required"`
 	Msg  string `json:"msg"`
+	Data []Req2 `json:"data"`
 }
 
 type Req2 struct {
-	Code int    `form:"code"`
-	Msg  string `form:"msg"`
+	Code int    `form:"code" json:"code" binding:"required"`
+	Msg  string `form:"msg" json:"msg"`
 }
 
-func ping(c *gin.Context, data Resp) *Resp {
-	fmt.Println(data)
-	return &Resp{Code: data.Code, Msg: data.Msg + " modified"}
+func ping(c *gin.Context, data Req2) *[]Resp {
+	return &[]Resp{{Code: data.Code, Msg: data.Msg + " modified"}}
 }
 
 func ping2(c *gin.Context, data Req2) (int, interface{}) {
@@ -27,30 +26,39 @@ func ping2(c *gin.Context, data Req2) (int, interface{}) {
 }
 
 func TestMain(t *testing.T) {
-	gtc := NewServer(&ConfigSchema{
-		SwaggerUrl:  "/docs",
-		Title:       "Test",
-		Description: "Desc",
-		Version:     "111",
-	})
 
-	gtc.POST("/get", ping, RouteInfo{
+	eng := gin.Default()
+	Config(&ConfigSchema{
+		SwaggerUrl: "/docs",
+	}, eng)
+
+	router := NewRouter(eng.Group("/api"))
+
+	router.Post("/get", ping, RouteInfo{
 		Tags:        []string{"Test"},
 		Title:       "Route Title",
 		Description: "Route Description",
 	})
 
-	gtc.GET("/test", ping2, RouteInfo{
+	router.Get("/test", ping2, RouteInfo{
 		Tags:        []string{"Test"},
 		Title:       "Route Titlttte",
 		Description: "Route Description",
 	}, ResultInfo{
 		Code:   200,
-		Output: Resp{},
+		Output: []Req2{},
 	}, ResultInfo{
 		Code:   401,
-		Output: 0,
+		Output: Req2{},
 	})
 
-	gtc.Run("localhost:8000")
+	rt := NewRouter(router.Group("bbb"))
+	rt.Post("/get", ping, RouteInfo{
+		Tags:        []string{"Test"},
+		Title:       "Route Title",
+		Description: "Route Description",
+	})
+
+	GenerateSwagger(&ConfigSchema{Title: "Test"})
+	eng.Run(":8080")
 }
