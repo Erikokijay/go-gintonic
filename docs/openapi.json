@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Test",
+    "title": "",
     "description": "",
     "version": ""
   },
@@ -23,6 +23,16 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "int"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "ArResp",
@@ -55,6 +65,16 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "int"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "ArResp",
@@ -77,6 +97,24 @@
         ],
         "summary": "Route Titlttte",
         "description": "Route Description",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "int"
+            }
+          },
+          {
+            "name": "msg",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "ArReq2",
@@ -108,16 +146,11 @@
       "ArReq2": {
         "items": {
           "properties": {
-            "code": {
-              "type": "integer"
-            },
             "msg": {
               "type": "string"
             }
           },
-          "required": [
-            "code"
-          ],
+          "required": [],
           "type": "object"
         },
         "type": "array"
@@ -131,16 +164,11 @@
             "data": {
               "items": {
                 "properties": {
-                  "code": {
-                    "type": "integer"
-                  },
                   "msg": {
                     "type": "string"
                   }
                 },
-                "required": [
-                  "code"
-                ],
+                "required": [],
                 "type": "object"
               },
               "type": "array"
@@ -158,16 +186,11 @@
       },
       "Req2": {
         "properties": {
-          "code": {
-            "type": "integer"
-          },
           "msg": {
             "type": "string"
           }
         },
-        "required": [
-          "code"
-        ],
+        "required": [],
         "type": "object"
       }
     },

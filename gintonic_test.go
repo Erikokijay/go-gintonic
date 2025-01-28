@@ -59,6 +59,6 @@ func TestMain(t *testing.T) {
 		Description: "Route Description",
 	})
 
-	GenerateSwagger(&ConfigSchema{Title: "Test"})
+	GenerateSwagger()
 	eng.Run(":8080")
 }

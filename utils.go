@@ -59,6 +59,9 @@ func generateSchema(t reflect.Type) map[string]interface{} {
 				if fieldTypeStr == "int" {
 					fieldTypeStr = "integer"
 				}
+				if fieldTypeStr == "bool" {
+					fieldTypeStr = "boolean"
+				}
 				if strings.Contains(fieldTypeStr, "float") {
 					fieldTypeStr = "number"
 				}
@@ -78,7 +81,7 @@ func generateSchema(t reflect.Type) map[string]interface{} {
 	return schema
 }
 
-func generateParametres(t reflect.Type) []Parameter {
+func generateParametres(t reflect.Type, isGet bool) []Parameter {
 	res := []Parameter{}
 
 	numFields := t.NumField()
@@ -89,7 +92,7 @@ func generateParametres(t reflect.Type) []Parameter {
 		queryTag := field.Tag.Get("form")
 		jsonTag := field.Tag.Get("json")
 
-		if queryTag != "" && jsonTag == "" {
+		if queryTag != "" && (jsonTag == "" || isGet) {
 
 			param := Parameter{}
 
@@ -208,7 +211,7 @@ func SimpleWrapper(path string, handler interface{}, method string, configs ...i
 	}
 }
 
-func GenerateSwagger(conf *ConfigSchema) {
+func GenerateSwagger() {
 	openAPI := OpenAPI{
 		OpenAPI: "3.1.0",
 		Info: Info{
@@ -249,7 +252,7 @@ func GenerateSwagger(conf *ConfigSchema) {
 			} else {
 				name = route.InType.(reflect.Type).Name()
 			}
-			operation.Parameters = generateParametres(route.InType.(reflect.Type))
+			operation.Parameters = generateParametres(route.InType.(reflect.Type), route.Method == "get" || route.Method == "delete")
 			openAPI.Components.Schemas[name] = generateSchema(route.InType.(reflect.Type))
 		}
 

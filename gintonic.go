@@ -10,12 +10,16 @@ type Router struct {
 	*gin.RouterGroup
 }
 
-func Config(conf *ConfigSchema, eng *gin.Engine) {
-	if conf == nil {
+var conf *ConfigSchema
+
+func Config(config *ConfigSchema, eng *gin.Engine) {
+	if config == nil {
 		conf = &ConfigSchema{
 			Mode:       gin.DebugMode,
 			SwaggerUrl: "/docs",
 		}
+	} else {
+		conf = config
 	}
 
 	_, err := os.Stat("./docs")
