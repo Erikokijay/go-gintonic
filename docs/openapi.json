@@ -1,53 +1,11 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "",
+    "title": "Test",
     "description": "",
     "version": ""
   },
   "paths": {
-    "/api/bbb/get": {
-      "post": {
-        "tags": [
-          "Test"
-        ],
-        "summary": "Route Title",
-        "description": "Route Description",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Req2"
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "code",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "int"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ArResp",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ArResp"
-                }
-              }
-            }
-          }
-        },
-        "security": null
-      }
-    },
     "/api/get": {
       "post": {
         "tags": [
@@ -55,26 +13,6 @@
         ],
         "summary": "Route Title",
         "description": "Route Description",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Req2"
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "code",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "int"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "ArResp",
@@ -103,7 +41,7 @@
             "in": "query",
             "required": true,
             "schema": {
-              "type": "int"
+              "type": "integer"
             }
           },
           {
@@ -146,11 +84,16 @@
       "ArReq2": {
         "items": {
           "properties": {
+            "code": {
+              "type": "integer"
+            },
             "msg": {
               "type": "string"
             }
           },
-          "required": [],
+          "required": [
+            "code"
+          ],
           "type": "object"
         },
         "type": "array"
@@ -164,11 +107,16 @@
             "data": {
               "items": {
                 "properties": {
+                  "code": {
+                    "type": "integer"
+                  },
                   "msg": {
                     "type": "string"
                   }
                 },
-                "required": [],
+                "required": [
+                  "code"
+                ],
                 "type": "object"
               },
               "type": "array"
@@ -186,11 +134,16 @@
       },
       "Req2": {
         "properties": {
+          "code": {
+            "type": "integer"
+          },
           "msg": {
             "type": "string"
           }
         },
-        "required": [],
+        "required": [
+          "code"
+        ],
         "type": "object"
       }
     },

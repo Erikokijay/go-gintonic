@@ -14,9 +14,10 @@ type ResultInfo struct {
 }
 
 type RouteInfo struct {
-	Tags        []string `json:"tags"`
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
+	Tags              []string `json:"tags"`
+	Title             string   `json:"title"`
+	Description       string   `json:"description"`
+	NeedAuthorization bool     `json:"need_authorization"`
 }
 
 type OpenAPI struct {

@@ -17,8 +17,8 @@ type Req2 struct {
 	Msg  string `form:"msg" json:"msg"`
 }
 
-func ping(c *gin.Context, data Req2) *[]Resp {
-	return &[]Resp{{Code: data.Code, Msg: data.Msg + " modified"}}
+func ping(c *gin.Context) *[]Resp {
+	return &[]Resp{}
 }
 
 func ping2(c *gin.Context, data Req2) (int, interface{}) {
@@ -30,6 +30,7 @@ func TestMain(t *testing.T) {
 	eng := gin.Default()
 	Config(&ConfigSchema{
 		SwaggerUrl: "/docs",
+		Title:      "Test",
 	}, eng)
 
 	router := NewRouter(eng.Group("/api"))
@@ -52,13 +53,6 @@ func TestMain(t *testing.T) {
 		Output: Req2{},
 	})
 
-	rt := NewRouter(router.Group("bbb"))
-	rt.Post("/get", ping, RouteInfo{
-		Tags:        []string{"Test"},
-		Title:       "Route Title",
-		Description: "Route Description",
-	})
-
 	GenerateSwagger()
-	eng.Run(":8080")
+	eng.Run(":8000")
 }

@@ -96,13 +96,23 @@ func generateParametres(t reflect.Type, isGet bool) []Parameter {
 
 			param := Parameter{}
 
-			fieldType := field.Type.Kind().String()
+			fieldTypeStr := field.Type.Kind().String()
+
+			if fieldTypeStr == "int" {
+				fieldTypeStr = "integer"
+			}
+			if fieldTypeStr == "bool" {
+				fieldTypeStr = "boolean"
+			}
+			if strings.Contains(fieldTypeStr, "float") {
+				fieldTypeStr = "number"
+			}
 
 			param.Name = queryTag
 			param.In = "query"
 			param.Required = field.Tag.Get("binding") == "required"
 			param.Schema = map[string]interface{}{
-				"type": fieldType,
+				"type": fieldTypeStr,
 			}
 
 			res = append(res, param)
@@ -177,16 +187,23 @@ func SimpleWrapper(path string, handler interface{}, method string, configs ...i
 
 	return func(c *gin.Context) {
 
-		myType := handlerType.In(1)
-		myValue := reflect.New(myType).Interface()
+		var inValues []reflect.Value
 
-		if err := c.ShouldBind(myValue); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
+		if handlerType.NumIn() == 2 {
+			myType := handlerType.In(1)
+			myValue := reflect.New(myType).Interface()
+
+			if err := c.ShouldBind(myValue); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
+
+			// Создаем слайс для входных параметров
+			inValues = []reflect.Value{reflect.ValueOf(c), reflect.ValueOf(myValue).Elem()}
+
+		} else {
+			inValues = []reflect.Value{reflect.ValueOf(c)}
 		}
-
-		// Создаем слайс для входных параметров
-		inValues := []reflect.Value{reflect.ValueOf(c), reflect.ValueOf(myValue).Elem()}
 
 		outValues := handlerValue.Call(inValues)
 
