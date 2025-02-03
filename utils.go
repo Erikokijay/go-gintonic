@@ -215,16 +215,29 @@ func SimpleWrapper(path string, handler interface{}, method string, configs ...i
 
 		// Возвращаем результат
 		if len(outValues) == 1 {
+
+			if outValues[0].IsNil() {
+				c.Status(http.StatusBadRequest)
+				return
+			}
+
 			c.JSON(http.StatusOK, outValues[0].Interface())
-		} else {
+		} else if len(outValues) == 2 {
 
 			if outValues[0].Kind() != reflect.Int {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Handler must return status code"})
 				return
 			}
 
+			if outValues[1].IsNil() {
+				c.Status(http.StatusBadRequest)
+				return
+			}
+
 			c.JSON(outValues[0].Interface().(int), outValues[1].Interface())
 		}
+
+		c.Status(http.StatusBadRequest)
 	}
 }
 

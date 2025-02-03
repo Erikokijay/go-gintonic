@@ -51,6 +51,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "bb",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -84,6 +92,9 @@
       "ArReq2": {
         "items": {
           "properties": {
+            "bb": {
+              "type": "boolean"
+            },
             "code": {
               "type": "integer"
             },
@@ -107,6 +118,9 @@
             "data": {
               "items": {
                 "properties": {
+                  "bb": {
+                    "type": "boolean"
+                  },
                   "code": {
                     "type": "integer"
                   },
@@ -134,6 +148,9 @@
       },
       "Req2": {
         "properties": {
+          "bb": {
+            "type": "boolean"
+          },
           "code": {
             "type": "integer"
           },

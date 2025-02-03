@@ -15,6 +15,7 @@ type Resp struct {
 type Req2 struct {
 	Code int    `form:"code" json:"code" binding:"required"`
 	Msg  string `form:"msg" json:"msg"`
+	Bb   bool   `form:"bb" json:"bb"`
 }
 
 func ping(c *gin.Context) *[]Resp {
