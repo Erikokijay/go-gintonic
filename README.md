@@ -1,6 +1,6 @@
 # GO-GINTONIC
 
-Module base on GIN. Automatize data validating and swagger creating
+Module base on GIN. Automatize data validating and swagger generating
 
 Installation:
 
@@ -9,6 +9,7 @@ go get github.com/Erikokijay/go-gintonic
 ```
 
 ### EXAMPLE
+
 ```go
 package main
 
@@ -21,9 +22,12 @@ import (
 func main() {
 	gin.SetMode("release")
 	eng := gin.Default()
-	gnt.Config(&gnt.ConfigSchema{SwaggerUrl: "/docs"}, eng)
+	gnt.Config(&gnt.ConfigSchema{
+		Title: "Test",
+		SwaggerUrl: "/docs",
+	}, eng)
 
-  router := gnt.NewRouter(eng.Group("/api"))
+  	router := gnt.NewRouter(eng.Group("/api"))
 
 	router.Post("/get", ping, RouteInfo{
 		Tags:        []string{"Test"},
@@ -31,21 +35,21 @@ func main() {
 		Description: "Route Description",
 	})
 
-  router.Get("/test", ping2, 
-    gintonic.ResultInfo{
-      Code: 200, 
-      Output: ExampleResponse{},
-    },
-    gintonic.ResultInfo{
-      Code: 500, 
-      Output: "error",
-    }, 
-    gintonic.RouteInfo{
-      Tags: []string{"Test", "First"},
-      Title: "Route Title",
-      Description: "Route Description"
-    },
-  )
+  	router.Get("/test", ping2, 
+		gintonic.ResultInfo{
+			Code: 200, 
+			Output: ExampleResponse{},
+		},
+		gintonic.ResultInfo{
+			Code: 500, 
+			Output: "error",
+		}, 
+		gintonic.RouteInfo{
+			Tags: []string{"Test", "First"},
+			Title: "Route Title",
+			Description: "Route Description"
+		},
+  	)
 
 	gnt.GenerateSwagger(&gnt.ConfigSchema{
 		Title:   "Test",
@@ -56,11 +60,10 @@ func main() {
 }
 
 func ping(c *gin.Context, data Resp) *Resp {
-	return &Resp{Code: data.Code + 1, Msg: data.Msg + " modified"}
+	return &Resp{Code: data.Code + 1, Msg: data.Msg + " modified"} // 200 - status code
 }
 
 func ping2(c *gin.Context, data ExampleRequest) (int, interface{}) {
-	return 200, &ExampleResponse{Msg: data.Name + " modified"}
+	return http.StatusOK, &ExampleResponse{Msg: data.Name + " modified"}
 }
-
 ```

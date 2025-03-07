@@ -222,6 +222,7 @@ func SimpleWrapper(path string, handler interface{}, method string, configs ...i
 			}
 
 			c.JSON(http.StatusOK, outValues[0].Interface())
+
 		} else if len(outValues) == 2 {
 
 			if outValues[0].Kind() != reflect.Int {
@@ -230,7 +231,7 @@ func SimpleWrapper(path string, handler interface{}, method string, configs ...i
 			}
 
 			if outValues[1].IsNil() {
-				c.Status(http.StatusBadRequest)
+				c.Status(outValues[0].Interface().(int))
 				return
 			}
 
@@ -256,6 +257,10 @@ func GenerateSwagger() {
 	for _, route := range routes {
 
 		path := PathItem{}
+
+		if res, ok := openAPI.Paths[route.Path]; ok {
+			path = res
+		}
 
 		operation := Operation{
 			Summary:     route.Info.Title,
@@ -329,17 +334,17 @@ func GenerateSwagger() {
 		fmt.Println("Error encoding openapi.json:", err)
 	}
 
-	SaveHTML()
+	SaveHTML(openAPI.Info.Title)
 
 }
 
-func SaveHTML() {
-	sv := `<!DOCTYPE html>
+func SaveHTML(title string) {
+	sv := fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <title>Swagger UI</title>
+    <title>%s</title>
     <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist/swagger-ui.css" />
     <style>
         html {
@@ -385,7 +390,7 @@ func SaveHTML() {
     </script>
 </body>
 
-</html>`
+</html>`, title)
 
 	file, err := os.Create("docs/swagger.html")
 	if err != nil {
