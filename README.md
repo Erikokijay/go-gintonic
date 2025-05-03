@@ -21,21 +21,22 @@ import (
 
 func main() {
 	gin.SetMode("release")
-	eng := gin.Default()
+	engine := gin.Default()
 	gnt.Config(&gnt.ConfigSchema{
 		Title: "Test",
 		SwaggerUrl: "/docs",
-	}, eng)
+	}, engine)
 
-  	router := gnt.NewRouter(eng.Group("/api"))
+  router := gnt.NewRouter(engine.Group("/user"))
 
 	router.Post("/get", ping, RouteInfo{
 		Tags:        []string{"Test"},
-		Title:       "Route Title",
-		Description: "Route Description",
+		Title:       "Swagger Title",
+		Description: "Swagger Description",
+    Version: "0.2.1",
 	})
 
-  	router.Get("/test", ping2, 
+  router.Get("/test", ping2, 
 		gintonic.ResultInfo{
 			Code: 200, 
 			Output: ExampleResponse{},
@@ -49,14 +50,10 @@ func main() {
 			Title: "Route Title",
 			Description: "Route Description"
 		},
-  	)
+  )
 
-	gnt.GenerateSwagger(&gnt.ConfigSchema{
-		Title:   "Test",
-		Version: "1.2.1",
-		Mode:    "release",
-	})
-	eng.Run(":8080")
+	gnt.GenerateSwagger()
+	engine.Run(":8080")
 }
 
 func ping(c *gin.Context, data Resp) *Resp {

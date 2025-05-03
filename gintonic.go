@@ -23,6 +23,8 @@ func Config(config *ConfigSchema, eng *gin.Engine) {
 		conf = config
 	}
 
+	conf.engine = eng
+
 	_, err := os.Stat("./docs")
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -38,25 +40,36 @@ func NewRouter(eng *gin.RouterGroup) *Router {
 	return &Router{eng}
 }
 
+func Group(path string) *Router {
+	return &Router{conf.engine.Group(path)}
+}
+
+func (r *Router) SubGroup(path string) *Router {
+	return &Router{r.Group(path)}
+}
+
 func (g *Router) Get(path string, handler interface{}, configs ...interface{}) {
-	g.GET(path, SimpleWrapper(g.BasePath()+path, handler, "GET", checkRouter(g.BasePath(), configs...)...))
+	g.GET(path, simpleWrapper(g.BasePath()+path, handler, "GET", checkRouter(g.BasePath(), configs...)...))
 }
 func (g *Router) Post(path string, handler interface{}, configs ...interface{}) {
-	g.POST(path, SimpleWrapper(g.BasePath()+path, handler, "POST", checkRouter(g.BasePath(), configs...)...))
+	g.POST(path, simpleWrapper(g.BasePath()+path, handler, "POST", checkRouter(g.BasePath(), configs...)...))
 }
 func (g *Router) Put(path string, handler interface{}, configs ...interface{}) {
-	g.PUT(path, SimpleWrapper(g.BasePath()+path, handler, "PUT", checkRouter(g.BasePath(), configs...)...))
+	g.PUT(path, simpleWrapper(g.BasePath()+path, handler, "PUT", checkRouter(g.BasePath(), configs...)...))
 }
 func (g *Router) Delete(path string, handler interface{}, configs ...interface{}) {
-	g.DELETE(path, SimpleWrapper(g.BasePath()+path, handler, "DELETE", checkRouter(g.BasePath(), configs...)...))
+	g.DELETE(path, simpleWrapper(g.BasePath()+path, handler, "DELETE", checkRouter(g.BasePath(), configs...)...))
 }
 
 func checkRouter(path string, configs ...interface{}) []interface{} {
+
 	cnf := configs
 	if path != "" && path != "/" {
 		for i := range cnf {
-			if routeInfo, ok := cnf[i].(RouteInfo); ok {
-				routeInfo.Tags = append(routeInfo.Tags, strings.Split(path, "/")[0])
+			if routeInfo, ok := cnf[i].(RouteInfo); ok && len(strings.Split(path, "/")) > 1 {
+				routerName := strings.Split(path, "/")[1]
+				routerName = strings.ToUpper(routerName[:1]) + routerName[1:]
+				routeInfo.Tags = append(routeInfo.Tags, routerName)
 				cnf[i] = routeInfo
 			}
 		}

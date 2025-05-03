@@ -81,8 +81,8 @@ func generateSchema(t reflect.Type) map[string]interface{} {
 	return schema
 }
 
-func generateParametres(t reflect.Type, isGet bool) []Parameter {
-	res := []Parameter{}
+func generateParametres(t reflect.Type, isGet bool) []parameter {
+	res := []parameter{}
 
 	numFields := t.NumField()
 
@@ -94,7 +94,7 @@ func generateParametres(t reflect.Type, isGet bool) []Parameter {
 
 		if queryTag != "" && (jsonTag == "" || isGet) {
 
-			param := Parameter{}
+			param := parameter{}
 
 			fieldTypeStr := field.Type.Kind().String()
 
@@ -122,7 +122,7 @@ func generateParametres(t reflect.Type, isGet bool) []Parameter {
 	return res
 }
 
-type ApiRoute struct {
+type apiRoute struct {
 	Path      string
 	InType    interface{}
 	Method    string
@@ -130,11 +130,11 @@ type ApiRoute struct {
 	Responses map[int]interface{}
 }
 
-var routes []ApiRoute = []ApiRoute{}
+var routes []apiRoute = []apiRoute{}
 
 // SimpleWrapper - create simple wrapper for gin handler, to validate data and create swagger.
 // path - route full path, handler - handler function, method - http method (GET, PUT, DELETE, POST), configs - ...RouteInfo, ...ResultInfo
-func SimpleWrapper(path string, handler interface{}, method string, configs ...interface{}) gin.HandlerFunc {
+func simpleWrapper(path string, handler interface{}, method string, configs ...interface{}) gin.HandlerFunc {
 
 	handlerType := reflect.TypeOf(handler)
 	handlerValue := reflect.ValueOf(handler)
@@ -159,7 +159,7 @@ func SimpleWrapper(path string, handler interface{}, method string, configs ...i
 	//dataValue := reflect.New(dataType).Interface()
 
 	// Добавляем маршрут в список маршрутов
-	route := ApiRoute{
+	route := apiRoute{
 		Path:      path,
 		InType:    dataType,
 		Method:    strings.ToLower(method),
@@ -243,26 +243,26 @@ func SimpleWrapper(path string, handler interface{}, method string, configs ...i
 }
 
 func GenerateSwagger() {
-	openAPI := OpenAPI{
+	openAPI := openAPI{
 		OpenAPI: "3.1.0",
-		Info: Info{
+		Info: info{
 			Title:       conf.Title,
 			Description: conf.Description,
 			Version:     conf.Version,
 		},
-		Paths:      Paths{},
-		Components: Components{Schemas: map[string]Schema{}},
+		Paths:      paths{},
+		Components: components{Schemas: map[string]schema{}},
 	}
 
 	for _, route := range routes {
 
-		path := PathItem{}
+		path := pathItem{}
 
 		if res, ok := openAPI.Paths[route.Path]; ok {
 			path = res
 		}
 
-		operation := Operation{
+		operation := operation{
 			Summary:     route.Info.Title,
 			Description: route.Info.Description,
 			Tags:        route.Info.Tags,
@@ -270,11 +270,11 @@ func GenerateSwagger() {
 
 		if route.Method != "get" && route.Method != "delete" && route.InType != nil {
 
-			operation.RequestBody = &RequestBody{
+			operation.RequestBody = &requestBody{
 				Required: true,
-				Content: map[string]MediaType{
+				Content: map[string]mediaType{
 					"application/json": {
-						Schema: Schema{"$ref": "#/components/schemas/" + route.InType.(reflect.Type).Name()},
+						Schema: schema{"$ref": "#/components/schemas/" + route.InType.(reflect.Type).Name()},
 					},
 				},
 			}
@@ -291,27 +291,27 @@ func GenerateSwagger() {
 			openAPI.Components.Schemas[name] = generateSchema(route.InType.(reflect.Type))
 		}
 
-		operation.Responses = map[string]Response{}
+		operation.Responses = map[string]response{}
 
-		for code, response := range route.Responses {
+		for code, resp := range route.Responses {
 
-			if response.(reflect.Type).Kind() == reflect.Array || response.(reflect.Type).Kind() == reflect.Struct || response.(reflect.Type).Kind() == reflect.Slice {
+			if resp.(reflect.Type).Kind() == reflect.Array || resp.(reflect.Type).Kind() == reflect.Struct || resp.(reflect.Type).Kind() == reflect.Slice {
 				name := ""
-				if response.(reflect.Type).Kind() == reflect.Slice {
-					name = "Ar" + response.(reflect.Type).Elem().Name()
+				if resp.(reflect.Type).Kind() == reflect.Slice {
+					name = "Ar" + resp.(reflect.Type).Elem().Name()
 				} else {
-					name = response.(reflect.Type).Name()
+					name = resp.(reflect.Type).Name()
 				}
 
-				operation.Responses[fmt.Sprintf("%d", code)] = Response{
+				operation.Responses[fmt.Sprintf("%d", code)] = response{
 					Description: name,
-					Content: map[string]MediaType{
+					Content: map[string]mediaType{
 						"application/json": {
-							Schema: Schema{"$ref": "#/components/schemas/" + name},
+							Schema: schema{"$ref": "#/components/schemas/" + name},
 						},
 					},
 				}
-				openAPI.Components.Schemas[name] = generateSchema(response.(reflect.Type))
+				openAPI.Components.Schemas[name] = generateSchema(resp.(reflect.Type))
 			}
 		}
 

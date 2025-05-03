@@ -29,30 +29,35 @@ func ping2(c *gin.Context, data Req2) (int, interface{}) {
 func TestMain(t *testing.T) {
 
 	eng := gin.Default()
+
 	Config(&ConfigSchema{
 		SwaggerUrl: "/docs",
 		Title:      "Test",
 	}, eng)
 
-	router := NewRouter(eng.Group("/api"))
+	router := Group("/api")
 
-	router.Post("/get", ping, RouteInfo{
-		Tags:        []string{"Test"},
-		Title:       "Route Title",
-		Description: "Route Description",
-	})
+	router.Post("/get", ping,
+		RouteInfo{
+			Title:       "Route Title",
+			Description: "Route Description",
+		},
+	)
 
-	router.Get("/test", ping2, RouteInfo{
-		Tags:        []string{"Test"},
-		Title:       "Route Titlttte",
-		Description: "Route Description",
-	}, ResultInfo{
-		Code:   200,
-		Output: []Req2{},
-	}, ResultInfo{
-		Code:   401,
-		Output: Req2{},
-	})
+	b := router.SubGroup("/bbb")
+
+	b.Get("/test", ping2,
+		RouteInfo{
+			Title:       "Route Titlttte",
+			Description: "Route Description",
+		}, ResultInfo{
+			Code:   200,
+			Output: []Req2{},
+		}, ResultInfo{
+			Code:   401,
+			Output: Req2{},
+		},
+	)
 
 	GenerateSwagger()
 	eng.Run(":8000")
