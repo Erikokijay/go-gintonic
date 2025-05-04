@@ -63,14 +63,27 @@ func (g *Router) Delete(path string, handler interface{}, configs ...interface{}
 
 func checkRouter(path string, configs ...interface{}) []interface{} {
 
+	haveTags := false
 	cnf := configs
 	if path != "" && path != "/" {
-		for i := range cnf {
-			if routeInfo, ok := cnf[i].(RouteInfo); ok && len(strings.Split(path, "/")) > 1 {
-				routerName := strings.Split(path, "/")[1]
-				routerName = strings.ToUpper(routerName[:1]) + routerName[1:]
-				routeInfo.Tags = append(routeInfo.Tags, routerName)
-				cnf[i] = routeInfo
+		if len(strings.Split(path, "/")) > 1 {
+
+			routerName := strings.Split(path, "/")[1]
+			routerName = strings.ToUpper(routerName[:1]) + routerName[1:]
+
+			for i := range cnf {
+
+				if routeInfo, ok := cnf[i].(RouteInfo); ok {
+
+					routeInfo.Tags = append(routeInfo.Tags, routerName)
+					cnf[i] = routeInfo
+					haveTags = true
+					break
+				}
+			}
+
+			if !haveTags {
+				cnf = append(cnf, RouteInfo{Tags: []string{routerName}})
 			}
 		}
 	}

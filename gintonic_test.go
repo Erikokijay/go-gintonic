@@ -37,27 +37,18 @@ func TestMain(t *testing.T) {
 
 	router := Group("/api")
 
-	router.Post("/get", ping,
+	router.Post("/buy", ping,
 		RouteInfo{
 			Title:       "Route Title",
 			Description: "Route Description",
 		},
 	)
+	router.Post("/", ping)
 
-	b := router.SubGroup("/bbb")
+	b := Group("/bbb")
 
-	b.Get("/test", ping2,
-		RouteInfo{
-			Title:       "Route Titlttte",
-			Description: "Route Description",
-		}, ResultInfo{
-			Code:   200,
-			Output: []Req2{},
-		}, ResultInfo{
-			Code:   401,
-			Output: Req2{},
-		},
-	)
+	b.Get("/buy", ping2)
+	b.Get("/eee", ping2)
 
 	GenerateSwagger()
 	eng.Run(":8000")
