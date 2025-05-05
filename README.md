@@ -27,16 +27,16 @@ func main() {
 		SwaggerUrl: "/docs",
 	}, engine)
 
-  router := gnt.NewRouter(engine.Group("/user"))
+  	router := gnt.NewRouter(engine.Group("/user"))
 
 	router.Post("/get", ping, RouteInfo{
 		Tags:        []string{"Test"},
 		Title:       "Swagger Title",
 		Description: "Swagger Description",
-    Version: "0.2.1",
+    	ersion:      "0.2.1",
 	})
 
-  router.Get("/test", ping2, 
+  	router.Get("/test", ping2, 
 		gintonic.ResultInfo{
 			Code: 200, 
 			Output: ExampleResponse{},
@@ -50,7 +50,7 @@ func main() {
 			Title: "Route Title",
 			Description: "Route Description"
 		},
-  )
+  	)
 
 	gnt.GenerateSwagger()
 	engine.Run(":8080")

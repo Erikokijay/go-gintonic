@@ -74,7 +74,7 @@ type response struct {
 }
 
 type components struct {
-	Schemas         map[string]schema         `json:"schemas"`
+	Schemas         map[string]interface{}    `json:"schemas"`
 	SecuritySchemes map[string]securityScheme `json:"securitySchemes"`
 }
 
@@ -82,6 +82,13 @@ type securityScheme struct {
 	Type         string `json:"type"`
 	Scheme       string `json:"scheme"`
 	BearerFormat string `json:"bearerFormat,omitempty"`
+	Description  string `json:"description,omitempty"`
 }
+
+type SecurityType string
+
+const (
+	Bearer SecurityType = "bearer"
+)
 
 type securityRequirement map[string][]string

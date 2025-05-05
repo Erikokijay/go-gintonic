@@ -11,10 +11,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func generateSchema(t reflect.Type) map[string]interface{} {
+func generateSchema(t reflect.Type) interface{} {
 
 	schema := map[string]interface{}{
 		"type": "object",
+	}
+
+	if strings.Contains(t.Kind().String(), "int") {
+		schema["type"] = "integer"
+		return schema
+	} else if t.Kind().String() == "bool" {
+		schema["type"] = "boolean"
+		return schema
+	} else if strings.Contains(t.Kind().String(), "float") {
+		schema["type"] = "number"
+		return schema
 	}
 
 	if t.Kind() == reflect.Slice || t.Kind() == reflect.Array {
@@ -34,6 +45,10 @@ func generateSchema(t reflect.Type) map[string]interface{} {
 	for i := 0; i < numFields; i++ {
 		field := t.Field(i)
 		jsonTag := field.Tag.Get("json")
+
+		if spl := strings.Split(jsonTag, ","); len(spl) > 0 {
+			jsonTag = spl[0]
+		}
 		//form := field.Tag.Get("form")
 
 		if jsonTag != "" {
@@ -56,7 +71,7 @@ func generateSchema(t reflect.Type) map[string]interface{} {
 					"additionalProperties": generateSchema(fieldType.Elem()),
 				}
 			} else {
-				if fieldTypeStr == "int" {
+				if strings.Contains(fieldTypeStr, "int") {
 					fieldTypeStr = "integer"
 				}
 				if fieldTypeStr == "bool" {
@@ -90,7 +105,14 @@ func generateParametres(t reflect.Type, isGet bool) []parameter {
 
 		field := t.Field(i)
 		queryTag := field.Tag.Get("form")
+		if spl := strings.Split(queryTag, ","); len(spl) > 0 {
+			queryTag = spl[0]
+		}
+
 		jsonTag := field.Tag.Get("json")
+		if spl := strings.Split(jsonTag, ","); len(spl) > 0 {
+			jsonTag = spl[0]
+		}
 
 		if queryTag != "" && (jsonTag == "" || isGet) {
 
@@ -158,7 +180,6 @@ func simpleWrapper(path string, handler interface{}, method string, configs ...i
 	}
 	//dataValue := reflect.New(dataType).Interface()
 
-	// Добавляем маршрут в список маршрутов
 	route := apiRoute{
 		Path:      path,
 		InType:    dataType,
@@ -198,7 +219,6 @@ func simpleWrapper(path string, handler interface{}, method string, configs ...i
 				return
 			}
 
-			// Создаем слайс для входных параметров
 			inValues = []reflect.Value{reflect.ValueOf(c), reflect.ValueOf(myValue).Elem()}
 
 		} else {
@@ -207,13 +227,11 @@ func simpleWrapper(path string, handler interface{}, method string, configs ...i
 
 		outValues := handlerValue.Call(inValues)
 
-		// Проверяем, что функция возвращает один параметр
 		if len(outValues) != 1 && len(outValues) != 2 {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Handler must return exactly one value"})
 			return
 		}
 
-		// Возвращаем результат
 		if len(outValues) == 1 {
 
 			if outValues[0].IsNil() {
@@ -244,14 +262,14 @@ func simpleWrapper(path string, handler interface{}, method string, configs ...i
 
 func GenerateSwagger() {
 	openAPI := openAPI{
-		OpenAPI: "3.1.0",
+		OpenAPI: "3.1.1",
 		Info: info{
 			Title:       conf.Title,
 			Description: conf.Description,
 			Version:     conf.Version,
 		},
 		Paths:      paths{},
-		Components: components{Schemas: map[string]schema{}},
+		Components: components{Schemas: map[string]interface{}{}},
 	}
 
 	for _, route := range routes {
@@ -295,24 +313,23 @@ func GenerateSwagger() {
 
 		for code, resp := range route.Responses {
 
-			if resp.(reflect.Type).Kind() == reflect.Array || resp.(reflect.Type).Kind() == reflect.Struct || resp.(reflect.Type).Kind() == reflect.Slice {
-				name := ""
-				if resp.(reflect.Type).Kind() == reflect.Slice {
-					name = "Ar" + resp.(reflect.Type).Elem().Name()
-				} else {
-					name = resp.(reflect.Type).Name()
-				}
-
-				operation.Responses[fmt.Sprintf("%d", code)] = response{
-					Description: name,
-					Content: map[string]mediaType{
-						"application/json": {
-							Schema: schema{"$ref": "#/components/schemas/" + name},
-						},
-					},
-				}
-				openAPI.Components.Schemas[name] = generateSchema(resp.(reflect.Type))
+			name := ""
+			if resp.(reflect.Type).Kind() == reflect.Slice {
+				name = "Ar" + resp.(reflect.Type).Elem().Name()
+			} else {
+				name = resp.(reflect.Type).Name()
 			}
+
+			operation.Responses[fmt.Sprintf("%d", code)] = response{
+				Description: name,
+				Content: map[string]mediaType{
+					"application/json": {
+						Schema: schema{"$ref": "#/components/schemas/" + name},
+					},
+				},
+			}
+			openAPI.Components.Schemas[name] = generateSchema(resp.(reflect.Type))
+
 		}
 
 		path[route.Method] = operation
@@ -373,7 +390,7 @@ func SaveHTML(title string) {
     <script>
         window.onload = function () {
             const ui = SwaggerUIBundle({
-                url: "/openapi.json",
+                url: "%s/openapi.json",
                 dom_id: '#swagger-ui',
                 deepLinking: true,
                 presets: [
@@ -390,7 +407,7 @@ func SaveHTML(title string) {
     </script>
 </body>
 
-</html>`, title)
+</html>`, title, conf.SwaggerUrl)
 
 	file, err := os.Create("docs/swagger.html")
 	if err != nil {
@@ -450,7 +467,6 @@ func generateOpenAPI(path string, handlerType reflect.Type, inType reflect.Type,
 		},
 	}
 
-	// Записываем OpenAPI спецификацию в файл
 	file, err := os.Create("static/openapi.json")
 	if err != nil {
 		fmt.Println("Error creating openapi.json:", err)

@@ -7,13 +7,14 @@ import (
 )
 
 type Resp struct {
-	Code int    `json:"code" binding:"required"`
-	Msg  string `json:"msg"`
-	Data []Req2 `json:"data"`
+	Code  int                `json:"code,omitempty" binding:"required"`
+	Msg   string             `json:"msg"`
+	Data  []Req2             `json:"data"`
+	Items map[string]float64 `json:"items"`
 }
 
 type Req2 struct {
-	Code int    `form:"code" json:"code" binding:"required"`
+	Code int    `form:"code" json:"code,omitempty" binding:"required"`
 	Msg  string `form:"msg" json:"msg"`
 	Bb   bool   `form:"bb" json:"bb"`
 }
@@ -39,8 +40,13 @@ func TestMain(t *testing.T) {
 
 	router.Post("/buy", ping,
 		RouteInfo{
-			Title:       "Route Title",
-			Description: "Route Description",
+			Title:             "Route Title",
+			Description:       "Route Description",
+			NeedAuthorization: true,
+		},
+		ResultInfo{
+			Code:   500,
+			Output: 0,
 		},
 	)
 	router.Post("/", ping)

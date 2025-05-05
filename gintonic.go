@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type Router struct {
+type router struct {
 	*gin.RouterGroup
 }
 
@@ -33,31 +33,31 @@ func Config(config *ConfigSchema, eng *gin.Engine) {
 	}
 
 	eng.StaticFile(conf.SwaggerUrl, "./docs/swagger.html")
-	eng.StaticFile("/openapi.json", "./docs/openapi.json")
+	eng.StaticFile(conf.SwaggerUrl+"/openapi.json", "./docs/openapi.json")
 }
 
-func NewRouter(eng *gin.RouterGroup) *Router {
-	return &Router{eng}
+func NewRouter(eng *gin.RouterGroup) *router {
+	return &router{eng}
 }
 
-func Group(path string) *Router {
-	return &Router{conf.engine.Group(path)}
+func Group(path string) *router {
+	return &router{conf.engine.Group(path)}
 }
 
-func (r *Router) SubGroup(path string) *Router {
-	return &Router{r.Group(path)}
+func (r *router) SubGroup(path string) *router {
+	return &router{r.Group(path)}
 }
 
-func (g *Router) Get(path string, handler interface{}, configs ...interface{}) {
+func (g *router) Get(path string, handler interface{}, configs ...interface{}) {
 	g.GET(path, simpleWrapper(g.BasePath()+path, handler, "GET", checkRouter(g.BasePath(), configs...)...))
 }
-func (g *Router) Post(path string, handler interface{}, configs ...interface{}) {
+func (g *router) Post(path string, handler interface{}, configs ...interface{}) {
 	g.POST(path, simpleWrapper(g.BasePath()+path, handler, "POST", checkRouter(g.BasePath(), configs...)...))
 }
-func (g *Router) Put(path string, handler interface{}, configs ...interface{}) {
+func (g *router) Put(path string, handler interface{}, configs ...interface{}) {
 	g.PUT(path, simpleWrapper(g.BasePath()+path, handler, "PUT", checkRouter(g.BasePath(), configs...)...))
 }
-func (g *Router) Delete(path string, handler interface{}, configs ...interface{}) {
+func (g *router) Delete(path string, handler interface{}, configs ...interface{}) {
 	g.DELETE(path, simpleWrapper(g.BasePath()+path, handler, "DELETE", checkRouter(g.BasePath(), configs...)...))
 }
 
