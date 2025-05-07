@@ -1,6 +1,7 @@
 package gintonic
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -45,7 +46,7 @@ func TestMain(t *testing.T) {
 			NeedAuthorization: true,
 		},
 		ResultInfo{
-			Code:   500,
+			Code:   http.StatusOK,
 			Output: 0,
 		},
 	)

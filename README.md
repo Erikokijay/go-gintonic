@@ -16,11 +16,11 @@ package main
 import (
 	gnt "github.com/Erikokijay/go-gintonic"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
+	"net/http"
 )
 
 func main() {
-	gin.SetMode("release")
+
 	engine := gin.Default()
 	gnt.Config(&gnt.ConfigSchema{
 		Title: "Test",
@@ -33,22 +33,22 @@ func main() {
 		Tags:        []string{"Test"},
 		Title:       "Swagger Title",
 		Description: "Swagger Description",
-    	ersion:      "0.2.1",
+    	Version:      "0.2.1",
 	})
 
   	router.Get("/test", ping2, 
 		gintonic.ResultInfo{
-			Code: 200, 
+			Code:   http.StatusOK, 
 			Output: ExampleResponse{},
 		},
 		gintonic.ResultInfo{
-			Code: 500, 
+			Code:   500, 
 			Output: "error",
 		}, 
 		gintonic.RouteInfo{
-			Tags: []string{"Test", "First"},
-			Title: "Route Title",
-			Description: "Route Description"
+			Tags:         []string{"Test", "First"},
+			Title:        "Route Title",
+			Description:  "Route Description"
 		},
   	)
 
@@ -60,7 +60,7 @@ func ping(c *gin.Context, data Resp) *Resp {
 	return &Resp{Code: data.Code + 1, Msg: data.Msg + " modified"} // 200 - status code
 }
 
-func ping2(c *gin.Context, data ExampleRequest) (int, interface{}) {
+func ping2(c *gin.Context, data ExampleRequest) (int, interface{}) { // status code, response
 	return http.StatusOK, &ExampleResponse{Msg: data.Name + " modified"}
 }
 ```

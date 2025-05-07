@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type router struct {
+type Router struct {
 	*gin.RouterGroup
 }
 
@@ -36,28 +36,35 @@ func Config(config *ConfigSchema, eng *gin.Engine) {
 	eng.StaticFile(conf.SwaggerUrl+"/openapi.json", "./docs/openapi.json")
 }
 
-func NewRouter(eng *gin.RouterGroup) *router {
-	return &router{eng}
+func NewRouter(eng *gin.RouterGroup) *Router {
+	return &Router{eng}
 }
 
-func Group(path string) *router {
-	return &router{conf.engine.Group(path)}
+func Group(path string) *Router {
+	return &Router{conf.engine.Group(path)}
 }
 
-func (r *router) SubGroup(path string) *router {
-	return &router{r.Group(path)}
+func (r *Router) SubGroup(path string) *Router {
+	return &Router{r.Group(path)}
 }
 
-func (g *router) Get(path string, handler interface{}, configs ...interface{}) {
+// Use RouteInfo{} struct for describe router, and use ResultInfo{} to describe responses
+func (g *Router) Get(path string, handler interface{}, configs ...interface{}) {
 	g.GET(path, simpleWrapper(g.BasePath()+path, handler, "GET", checkRouter(g.BasePath(), configs...)...))
 }
-func (g *router) Post(path string, handler interface{}, configs ...interface{}) {
+
+// Use RouteInfo{} struct for describe router, and use ResultInfo{} to describe responses
+func (g *Router) Post(path string, handler interface{}, configs ...interface{}) {
 	g.POST(path, simpleWrapper(g.BasePath()+path, handler, "POST", checkRouter(g.BasePath(), configs...)...))
 }
-func (g *router) Put(path string, handler interface{}, configs ...interface{}) {
+
+// Use RouteInfo{} struct for describe router, and use ResultInfo{} to describe responses
+func (g *Router) Put(path string, handler interface{}, configs ...interface{}) {
 	g.PUT(path, simpleWrapper(g.BasePath()+path, handler, "PUT", checkRouter(g.BasePath(), configs...)...))
 }
-func (g *router) Delete(path string, handler interface{}, configs ...interface{}) {
+
+// Use RouteInfo{} struct for describe router, and use ResultInfo{} to describe responses
+func (g *Router) Delete(path string, handler interface{}, configs ...interface{}) {
 	g.DELETE(path, simpleWrapper(g.BasePath()+path, handler, "DELETE", checkRouter(g.BasePath(), configs...)...))
 }
 

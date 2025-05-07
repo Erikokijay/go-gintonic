@@ -401,8 +401,6 @@ func SaveHTML(title string) {
             })
 
             window.ui = ui
-
-            document.getElementsByClassName("topbar")[0].style.display = "none"
         }
     </script>
 </body>
