@@ -36,6 +36,11 @@ func Config(config *ConfigSchema, eng *gin.Engine) {
 	eng.StaticFile(conf.SwaggerUrl+"/openapi.json", "./docs/openapi.json")
 }
 
+func Start(host string) {
+	GenerateSwagger()
+	conf.engine.Run(host)
+}
+
 func NewRouter(eng *gin.RouterGroup) *Router {
 	return &Router{eng}
 }
@@ -48,22 +53,22 @@ func (r *Router) SubGroup(path string) *Router {
 	return &Router{r.Group(path)}
 }
 
-// Use RouteInfo{} struct for describe router, and use ResultInfo{} to describe responses
+// Use RouteInfo{} struct for describe router, and use ResultInfo{} to describe responses. Even you can add function to validate data  func (r *Data) AutoValidate() error
 func (g *Router) Get(path string, handler interface{}, configs ...interface{}) {
 	g.GET(path, simpleWrapper(g.BasePath()+path, handler, "GET", checkRouter(g.BasePath(), configs...)...))
 }
 
-// Use RouteInfo{} struct for describe router, and use ResultInfo{} to describe responses
+// Use RouteInfo{} struct for describe router, and use ResultInfo{} to describe responses. Even you can add function to validate data  func (r *Data) AutoValidate() error
 func (g *Router) Post(path string, handler interface{}, configs ...interface{}) {
 	g.POST(path, simpleWrapper(g.BasePath()+path, handler, "POST", checkRouter(g.BasePath(), configs...)...))
 }
 
-// Use RouteInfo{} struct for describe router, and use ResultInfo{} to describe responses
+// Use RouteInfo{} struct for describe router, and use ResultInfo{} to describe responses. Even you can add function to validate data  func (r *Data) AutoValidate() error
 func (g *Router) Put(path string, handler interface{}, configs ...interface{}) {
 	g.PUT(path, simpleWrapper(g.BasePath()+path, handler, "PUT", checkRouter(g.BasePath(), configs...)...))
 }
 
-// Use RouteInfo{} struct for describe router, and use ResultInfo{} to describe responses
+// Use RouteInfo{} struct for describe router, and use ResultInfo{} to describe responses. Even you can add function to validate data  func (r *Data) AutoValidate() error
 func (g *Router) Delete(path string, handler interface{}, configs ...interface{}) {
 	g.DELETE(path, simpleWrapper(g.BasePath()+path, handler, "DELETE", checkRouter(g.BasePath(), configs...)...))
 }

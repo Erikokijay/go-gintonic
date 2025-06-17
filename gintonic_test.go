@@ -1,6 +1,7 @@
 package gintonic
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -16,8 +17,17 @@ type Resp struct {
 
 type Req2 struct {
 	Code int    `form:"code" json:"code,omitempty" binding:"required"`
-	Msg  string `form:"msg" json:"msg"`
+	Msg  string `json:"msg"`
 	Bb   bool   `form:"bb" json:"bb"`
+}
+
+func (r *Req2) AutoValidate() error {
+
+	if r.Code > 100 {
+		return fmt.Errorf("CODE")
+	}
+
+	return nil
 }
 
 func ping(c *gin.Context) *[]Resp {
@@ -46,7 +56,7 @@ func TestMain(t *testing.T) {
 			NeedAuthorization: true,
 		},
 		ResultInfo{
-			Code:   http.StatusOK,
+			Code:   http.StatusInternalServerError,
 			Output: 0,
 		},
 	)
@@ -57,6 +67,5 @@ func TestMain(t *testing.T) {
 	b.Get("/buy", ping2)
 	b.Get("/eee", ping2)
 
-	GenerateSwagger()
-	eng.Run(":8000")
+	Start(":8080")
 }

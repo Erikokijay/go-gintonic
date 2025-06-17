@@ -54,7 +54,7 @@ func generateSchema(t reflect.Type) interface{} {
 		if jsonTag != "" {
 			fieldType := field.Type
 			fieldKind := fieldType.Kind()
-			fieldTypeStr := fieldKind.String()
+			fieldTypeStr := strings.ReplaceAll(fieldKind.String(), ",omitempty", "")
 
 			if fieldKind == reflect.Struct {
 				properties[jsonTag] = generateSchema(fieldType)
@@ -114,11 +114,15 @@ func generateParametres(t reflect.Type, isGet bool) []parameter {
 			jsonTag = spl[0]
 		}
 
+		if isGet && queryTag == "" && jsonTag != "" {
+			fmt.Println("\033[33m ⚠️ WARNING! In GET method you have json, and not have form parametres. Json Tag:", jsonTag, "\033[0m")
+		}
+
 		if queryTag != "" && (jsonTag == "" || isGet) {
 
 			param := parameter{}
 
-			fieldTypeStr := field.Type.Kind().String()
+			fieldTypeStr := strings.ReplaceAll(field.Type.Kind().String(), ",omitempty", "")
 
 			if fieldTypeStr == "int" {
 				fieldTypeStr = "integer"
@@ -211,15 +215,39 @@ func simpleWrapper(path string, handler interface{}, method string, configs ...i
 		var inValues []reflect.Value
 
 		if handlerType.NumIn() == 2 {
-			myType := handlerType.In(1)
-			myValue := reflect.New(myType).Interface()
+			myType := handlerType.In(1) // Тип второго аргумента
+			isPointer := myType.Kind() == reflect.Ptr
 
-			if err := c.ShouldBind(myValue); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			// Создаем новый экземпляр структуры
+			var myValue reflect.Value = reflect.New(myType)
+			if isPointer {
+				myValue = reflect.New(myType.Elem()) // Создаем указатель
+			}
+
+			fmt.Println(myValue.Type().Kind(), isPointer, myValue.Interface())
+			if err := c.ShouldBind(myValue.Interface()); err != nil {
+				fmt.Println(err, "err1")
+				c.JSON(http.StatusBadRequest, SimpleResponse{Ok: false, Error: err.Error()})
 				return
 			}
 
-			inValues = []reflect.Value{reflect.ValueOf(c), reflect.ValueOf(myValue).Elem()}
+			// Проверяем наличие метода AutoValidate
+			v := myValue
+			if isPointer {
+				v = v.Addr() // Если метод определен для указателя, берем адрес
+			}
+
+			if hasAutoValidate(v) {
+				fmt.Println("CALL")
+				err := callAutoValidate(v)
+				if err != nil {
+					fmt.Println(err, "err2")
+					c.JSON(http.StatusBadRequest, SimpleResponse{Ok: false, Error: err.Error()})
+					return
+				}
+			}
+
+			inValues = []reflect.Value{reflect.ValueOf(c), reflect.ValueOf(myValue.Interface()).Elem()}
 
 		} else {
 			inValues = []reflect.Value{reflect.ValueOf(c)}
@@ -259,8 +287,36 @@ func simpleWrapper(path string, handler interface{}, method string, configs ...i
 		c.Status(http.StatusBadRequest)
 	}
 }
+func hasAutoValidate(v reflect.Value) bool {
+	method := v.MethodByName("AutoValidate")
+	return method.IsValid()
+}
+
+// Вызов метода AutoValidate
+func callAutoValidate(v reflect.Value) error {
+	method := v.MethodByName("AutoValidate")
+
+	results := method.Call(nil)
+
+	if len(results) == 1 {
+
+		if results[0].IsNil() {
+			return nil
+		}
+		if results[0].Kind() == reflect.Interface {
+			if err, ok := results[0].Interface().(error); ok {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+var haveAuth bool = false
 
 func GenerateSwagger() {
+
 	openAPI := openAPI{
 		OpenAPI: "3.1.1",
 		Info: info{
@@ -273,6 +329,10 @@ func GenerateSwagger() {
 	}
 
 	for _, route := range routes {
+
+		if route.Info.NeedAuthorization {
+			haveAuth = true
+		}
 
 		path := pathItem{}
 
@@ -332,10 +392,29 @@ func GenerateSwagger() {
 
 		}
 
+		if route.Info.NeedAuthorization {
+			operation.Security = []securityRequirement{
+				{
+					"BearerAuth": []string{},
+				},
+			}
+		}
+
 		path[route.Method] = operation
 		openAPI.Paths[route.Path] = path
 
 		//openAPI["paths"].(map[string]interface{})[route.Path].(map[string]interface{})[route.Method].(map[string]interface{})["summary"] = route.Info
+	}
+
+	if haveAuth {
+		openAPI.Components.SecuritySchemes = map[string]securityScheme{
+			"BearerAuth": {
+				Type:         "http",
+				Scheme:       "bearer",
+				BearerFormat: "JWT",
+				Description:  "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+			},
+		}
 	}
 
 	file, err := os.Create("docs/openapi.json")
@@ -356,6 +435,40 @@ func GenerateSwagger() {
 }
 
 func SaveHTML(title string) {
+
+	authInerceptor := ""
+	authBtn := ""
+
+	if haveAuth {
+		authInerceptor = `,
+		requestInterceptor: (req) => {
+			const token = localStorage.getItem('swagger_token');
+			if (token) {
+				req.headers.Authorization = 'Bearer ' + token;
+			}
+			return req;
+		}`
+
+		authBtn = `const btn = document.createElement('button');
+		btn.innerHTML = 'Set JWT Token';
+		btn.style.position = 'fixed';
+		btn.style.top = '10px';
+		btn.style.right = '10px';
+		btn.style.zIndex = '1000';
+		btn.onclick = function() {
+			const token = prompt('Enter JWT Token:');
+			if (token) {
+				console.log(token)
+				localStorage.setItem('swagger_token', token);
+				//window.location.reload();
+			}
+		};
+		document.body.appendChild(btn);`
+	}
+
+	authBtn = ""
+	authInerceptor = ""
+
 	sv := fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
 
@@ -397,15 +510,17 @@ func SaveHTML(title string) {
                     SwaggerUIBundle.presets.apis,
                     SwaggerUIStandalonePreset
                 ],
-                layout: "StandaloneLayout"
+                layout: "StandaloneLayout"%s
             })
 
             window.ui = ui
+
+			%s
         }
     </script>
 </body>
 
-</html>`, title, conf.SwaggerUrl)
+</html>`, title, conf.SwaggerUrl, authInerceptor, authBtn)
 
 	file, err := os.Create("docs/swagger.html")
 	if err != nil {
