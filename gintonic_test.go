@@ -49,7 +49,7 @@ func TestMain(t *testing.T) {
 
 	router := Group("/api")
 
-	router.Post("/buy", ping,
+	router.Post("/buy", ping2,
 		RouteInfo{
 			Title:             "Route Title",
 			Description:       "Route Description",
@@ -62,7 +62,10 @@ func TestMain(t *testing.T) {
 	)
 	router.Post("/", ping)
 
-	b := Group("/bbb")
+	b := Group("/bbb", GroupInfo{
+		Title:             "Tbion",
+		NeedAuthorization: true,
+	})
 
 	b.Get("/buy", ping2)
 	b.Get("/eee", ping2)

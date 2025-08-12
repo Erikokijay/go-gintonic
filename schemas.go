@@ -23,6 +23,11 @@ type RouteInfo struct {
 	NeedAuthorization bool     `json:"need_authorization"`
 }
 
+type GroupInfo struct {
+	Title             string `json:"title"`
+	NeedAuthorization bool   `json:"need_authorization"`
+}
+
 type openAPI struct {
 	OpenAPI    string     `json:"openapi"`
 	Info       info       `json:"info"`

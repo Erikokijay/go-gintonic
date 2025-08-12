@@ -96,12 +96,12 @@ func generateSchema(t reflect.Type) interface{} {
 	return schema
 }
 
-func generateParametres(t reflect.Type, isGet bool) []parameter {
+func generateParametres(t reflect.Type, isGet bool, path string) []parameter {
 	res := []parameter{}
 
 	numFields := t.NumField()
 
-	for i := 0; i < numFields; i++ {
+	for i := range numFields {
 
 		field := t.Field(i)
 		queryTag := field.Tag.Get("form")
@@ -115,7 +115,7 @@ func generateParametres(t reflect.Type, isGet bool) []parameter {
 		}
 
 		if isGet && queryTag == "" && jsonTag != "" {
-			fmt.Println("\033[33m ⚠️ WARNING! In GET method you have json, and not have form parametres. Json Tag:", jsonTag, "\033[0m")
+			fmt.Println("\033[33m⚠️  WARNING! In GET ("+path+") method you have json, and not have form parametres. Json Tag:", jsonTag, "\033[0m")
 		}
 
 		if queryTag != "" && (jsonTag == "" || isGet) {
@@ -215,33 +215,31 @@ func simpleWrapper(path string, handler interface{}, method string, configs ...i
 		var inValues []reflect.Value
 
 		if handlerType.NumIn() == 2 {
-			myType := handlerType.In(1) // Тип второго аргумента
+			myType := handlerType.In(1)
 			isPointer := myType.Kind() == reflect.Ptr
 
-			// Создаем новый экземпляр структуры
 			var myValue reflect.Value = reflect.New(myType)
 			if isPointer {
-				myValue = reflect.New(myType.Elem()) // Создаем указатель
+				myValue = reflect.New(myType.Elem())
 			}
 
-			fmt.Println(myValue.Type().Kind(), isPointer, myValue.Interface())
+			//fmt.Println(myValue.Type().Kind(), isPointer, myValue.Interface())
 			if err := c.ShouldBind(myValue.Interface()); err != nil {
-				fmt.Println(err, "err1")
+				//fmt.Println(err, "err1")
 				c.JSON(http.StatusBadRequest, SimpleResponse{Ok: false, Error: err.Error()})
 				return
 			}
 
-			// Проверяем наличие метода AutoValidate
 			v := myValue
 			if isPointer {
-				v = v.Addr() // Если метод определен для указателя, берем адрес
+				v = v.Addr()
 			}
 
 			if hasAutoValidate(v) {
-				fmt.Println("CALL")
+				//fmt.Println("CALL")
 				err := callAutoValidate(v)
 				if err != nil {
-					fmt.Println(err, "err2")
+					//fmt.Println(err, "err2")
 					c.JSON(http.StatusBadRequest, SimpleResponse{Ok: false, Error: err.Error()})
 					return
 				}
@@ -292,7 +290,6 @@ func hasAutoValidate(v reflect.Value) bool {
 	return method.IsValid()
 }
 
-// Вызов метода AutoValidate
 func callAutoValidate(v reflect.Value) error {
 	method := v.MethodByName("AutoValidate")
 
@@ -365,7 +362,7 @@ func GenerateSwagger() {
 			} else {
 				name = route.InType.(reflect.Type).Name()
 			}
-			operation.Parameters = generateParametres(route.InType.(reflect.Type), route.Method == "get" || route.Method == "delete")
+			operation.Parameters = generateParametres(route.InType.(reflect.Type), route.Method == "get" || route.Method == "delete", route.Path)
 			openAPI.Components.Schemas[name] = generateSchema(route.InType.(reflect.Type))
 		}
 
