@@ -23,33 +23,30 @@ func main() {
 
 	engine := gin.Default()
 	gnt.Config(&gnt.ConfigSchema{
-		Title: "Test",
-		SwaggerUrl: "/docs",
+		Title:       "Test",
+		Description: "Test",
+		Version:     "1.0.0",
+		SwaggerUrl:  "/docs",
 	}, engine)
 
   	router := gnt.Group("/user")
 
-	router.Post("/post", get, RouteInfo{
+	router.Post("/post", get, gnt.RouteInfo{
 		Tags:        []string{"Test"},
-		Title:       "Swagger Title",
-		Description: "Swagger Description",
-    	Version:      "0.2.1",
+		Title:       "Route Title",
+		Description: "Route Description",
 	})
 
   	router.Get("/get", post, 
-		gintonic.ResultInfo{
-			Code:   http.StatusOK, 
-			Output: ExampleResponse{},
+		gnt.ResultInfo{
+			http.StatusOK: ExampleResponse{},
+			http.StatusInternalServerError: "error",
 		},
-		gintonic.ResultInfo{
-			Code:              http.StatusInternalServerError, 
-			Output:            "error",
-			NeedAuthorization: true, // Simple "Authorization: Bearer" format
-		}, 
-		gintonic.RouteInfo{
+		gnt.RouteInfo{
 			Tags:         []string{"Test", "First"},
 			Title:        "Route Title",
 			Description:  "Route Description"
+			NeedAuthorization: true, // Simple "Authorization: Bearer" format
 		},
   	)
 

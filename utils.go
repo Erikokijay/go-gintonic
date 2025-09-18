@@ -195,6 +195,13 @@ func simpleWrapper(path string, handler interface{}, method string, configs ...i
 		if reflect.TypeOf(conf).Name() == "ResultInfo" {
 			res := conf.(ResultInfo)
 			route.Responses[res.Code] = reflect.TypeOf(res.Output)
+
+		} else if reflect.TypeOf(conf).Name() == "ResultsInfo" {
+			res := conf.(ResultsInfo)
+			for code, out := range res {
+				route.Responses[code] = reflect.TypeOf(out)
+			}
+
 		} else if reflect.TypeOf(conf).Name() == "RouteInfo" {
 			route.Info = conf.(RouteInfo)
 		}

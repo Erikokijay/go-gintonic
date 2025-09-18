@@ -11,6 +11,8 @@ type ConfigSchema struct {
 	engine      *gin.Engine
 }
 
+type ResultsInfo map[int]interface{}
+
 type ResultInfo struct {
 	Code   int         `json:"code"`
 	Output interface{} `json:"output"`

@@ -2,7 +2,7 @@ module github.com/Erikokijay/go-gintonic
 
 go 1.23.4
 
-require github.com/gin-gonic/gin v1.10.0
+require github.com/gin-gonic/gin v1.10.1
 
 require (
 	github.com/bytedance/sonic v1.12.7 // indirect

@@ -55,9 +55,9 @@ func TestMain(t *testing.T) {
 			Description:       "Route Description",
 			NeedAuthorization: true,
 		},
-		ResultInfo{
-			Code:   http.StatusInternalServerError,
-			Output: 0,
+		ResultsInfo{
+			http.StatusInternalServerError: 0,
+			http.StatusOK:                  "ok",
 		},
 	)
 	router.Post("/", ping)
