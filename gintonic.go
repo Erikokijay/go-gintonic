@@ -96,6 +96,7 @@ func checkRouter(path string, configs ...interface{}) []interface{} {
 			routerName = strings.ToUpper(routerName[:1]) + routerName[1:]
 
 			var routeInfo RouteInfo
+
 			for i := range configs {
 
 				if info, ok := configs[i].(RouteInfo); ok {

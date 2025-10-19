@@ -191,15 +191,18 @@ func simpleWrapper(path string, handler interface{}, method string, configs ...i
 		Responses: map[int]interface{}{},
 	}
 
+	haveOut := false
 	for _, conf := range configs {
 		if reflect.TypeOf(conf).Name() == "ResultInfo" {
 			res := conf.(ResultInfo)
 			route.Responses[res.Code] = reflect.TypeOf(res.Output)
+			haveOut = true
 
 		} else if reflect.TypeOf(conf).Name() == "ResultsInfo" {
 			res := conf.(ResultsInfo)
 			for code, out := range res {
 				route.Responses[code] = reflect.TypeOf(out)
+				haveOut = true
 			}
 
 		} else if reflect.TypeOf(conf).Name() == "RouteInfo" {
@@ -209,6 +212,8 @@ func simpleWrapper(path string, handler interface{}, method string, configs ...i
 
 	if handlerType.NumOut() == 1 {
 		route.Responses[200] = handlerType.Out(0).Elem()
+	} else if !haveOut {
+		route.Responses[200] = reflect.TypeOf("")
 	}
 
 	if route.Info.Title == "" {
@@ -273,6 +278,7 @@ func simpleWrapper(path string, handler interface{}, method string, configs ...i
 			}
 
 			c.JSON(http.StatusOK, outValues[0].Interface())
+			return
 
 		} else if len(outValues) == 2 {
 
@@ -286,7 +292,10 @@ func simpleWrapper(path string, handler interface{}, method string, configs ...i
 				return
 			}
 
+			fmt.Println(outValues[1].Interface())
+
 			c.JSON(outValues[0].Interface().(int), outValues[1].Interface())
+			return
 		}
 
 		c.Status(http.StatusBadRequest)

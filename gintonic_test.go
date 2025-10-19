@@ -19,7 +19,7 @@ type Resp struct {
 
 type Req2 struct {
 	Code int    `form:"code" json:"code,omitempty" binding:"required"`
-	Msg  string `json:"msg"`
+	Msg  string `json:"msg" form:"msg"`
 	Bb   bool   `form:"bb" json:"bb"`
 }
 
@@ -62,10 +62,7 @@ func TestMain(t *testing.T) {
 			http.StatusOK:                  Resp{},
 		},
 	)
-	router.Post("/", ping, ResultInfo{
-		Code:   http.StatusOK,
-		Output: Resp{},
-	})
+	router.Post("/", ping)
 
 	b := Group("/bbb", GroupInfo{
 		Title:             "Tbion",
@@ -73,7 +70,7 @@ func TestMain(t *testing.T) {
 	})
 
 	b.Get("/buy", ping2)
-	b.Get("/eee", ping2)
+	b.Post("/eee", ping2)
 
 	Start(":8080")
 }
