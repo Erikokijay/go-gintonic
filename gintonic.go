@@ -130,6 +130,10 @@ func checkRouter(path string, configs ...interface{}) []interface{} {
 
 				} else if info, ok := configs[i].(ResultInfo); ok {
 					cnf = append(cnf, info)
+				} else if info, ok := configs[i].(ResultsInfo); ok {
+					for k, v := range info {
+						cnf = append(cnf, ResultInfo{Code: k, Output: v})
+					}
 				}
 			}
 

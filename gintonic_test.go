@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,6 +14,7 @@ type Resp struct {
 	Msg   string             `json:"msg"`
 	Data  []Req2             `json:"data"`
 	Items map[string]float64 `json:"items"`
+	T     time.Time          `json:"t"`
 }
 
 type Req2 struct {
@@ -57,10 +59,13 @@ func TestMain(t *testing.T) {
 		},
 		ResultsInfo{
 			http.StatusInternalServerError: 0,
-			http.StatusOK:                  "ok",
+			http.StatusOK:                  Resp{},
 		},
 	)
-	router.Post("/", ping)
+	router.Post("/", ping, ResultInfo{
+		Code:   http.StatusOK,
+		Output: Resp{},
+	})
 
 	b := Group("/bbb", GroupInfo{
 		Title:             "Tbion",
