@@ -49,13 +49,17 @@ func TestMain(t *testing.T) {
 		Title:      "Test",
 	}, eng)
 
-	router := Group("/api")
+	router := Group("/api", GroupInfo{
+		Title:             "sss",
+		NeedAuthorization: true,
+	})
 
 	router.Post("/buy", ping2,
 		RouteInfo{
 			Title:             "Route Title",
 			Description:       "Route Description",
 			NeedAuthorization: true,
+			Tags:              []string{"ss", "aa"},
 		},
 		ResultsInfo{
 			http.StatusInternalServerError: 0,

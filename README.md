@@ -17,6 +17,7 @@ import (
 	gnt "github.com/Erikokijay/go-gintonic"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"fmt"
 )
 
 func main() {
@@ -29,23 +30,26 @@ func main() {
 		SwaggerUrl:  "/docs",
 	}, engine)
 
-  	router := gnt.Group("/user")
+  	router := gnt.Group("/user", gnt.GroupInfo{
+		Title:             "GROUP",
+		NeedAuthorization: true,
+	})
 
-	router.Post("/post", get, gnt.RouteInfo{
+	router.Post("/post", ping2, gnt.RouteInfo{
 		Tags:        []string{"Test"},
 		Title:       "Route Title",
 		Description: "Route Description",
 	})
 
-  	router.Get("/get", post, 
-		gnt.ResultInfo{
-			http.StatusOK: ExampleResponse{},
+  	router.Get("/get", ping, 
+		gnt.ResultsInfo{
+			http.StatusOK: Resp{},
 			http.StatusInternalServerError: "error",
 		},
 		gnt.RouteInfo{
 			Tags:         []string{"Test", "First"},
 			Title:        "Route Title",
-			Description:  "Route Description"
+			Description:  "Route Description",
 			NeedAuthorization: true, // Simple "Authorization: Bearer" format
 		},
   	)

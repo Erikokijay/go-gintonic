@@ -100,29 +100,26 @@ func checkRouter(path string, configs ...interface{}) []interface{} {
 			for i := range configs {
 
 				if info, ok := configs[i].(RouteInfo); ok {
+
 					if len(info.Tags) > 0 {
-						routeInfo.Tags = append(routeInfo.Tags, routerName)
+						routeInfo.Tags = append(routeInfo.Tags, info.Tags...)
 						haveTags = true
 					}
 					if info.NeedAuthorization {
 						routeInfo.NeedAuthorization = true
 					}
 					if info.Description != "" {
-						routeInfo.Description = ""
+						routeInfo.Description = info.Description
 					}
 					if info.Title != "" {
-						routeInfo.Title = ""
+						routeInfo.Title = info.Title
 					}
 
 				} else if info, ok := configs[i].(GroupInfo); ok {
-					if len(routeInfo.Tags) == 0 {
-						if info.Title != "" {
-							routeInfo.Tags = append(routeInfo.Tags, info.Title)
-							haveTags = true
-						} else {
-							routeInfo.Tags = append(routeInfo.Tags, routerName)
-							haveTags = true
-						}
+
+					if info.Title != "" {
+						routeInfo.Tags = append(routeInfo.Tags, info.Title)
+						haveTags = true
 					}
 
 					if info.NeedAuthorization && !routeInfo.NeedAuthorization {
