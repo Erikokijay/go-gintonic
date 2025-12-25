@@ -292,8 +292,6 @@ func simpleWrapper(path string, handler interface{}, method string, configs ...i
 				return
 			}
 
-			fmt.Println(outValues[1].Interface())
-
 			c.JSON(outValues[0].Interface().(int), outValues[1].Interface())
 			return
 		}
