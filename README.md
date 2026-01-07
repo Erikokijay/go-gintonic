@@ -24,10 +24,11 @@ func main() {
 
 	engine := gin.Default()
 	gnt.Config(&gnt.ConfigSchema{
-		Title:       "Test",
-		Description: "Test",
-		Version:     "1.0.0",
-		SwaggerUrl:  "/docs",
+		Title:        "Test",
+		Description:  "Test",
+		Version:      "1.0.0",
+		SwaggerUrl:   "/docs",
+		SwaggerIPs:   []string{"190.0.23.222", "localhost", "::1"},
 	}, engine)
 
   	router := gnt.Group("/user", gnt.GroupInfo{

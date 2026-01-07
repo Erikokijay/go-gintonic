@@ -10,7 +10,7 @@ import (
 )
 
 type Resp struct {
-	Code  int                `json:"code,omitempty" binding:"required"`
+	Code  float64            `json:"code,omitempty" binding:"required"`
 	Msg   string             `json:"msg"`
 	Data  []Req2             `json:"data"`
 	Items map[string]float64 `json:"items"`
@@ -37,7 +37,7 @@ func ping(c *gin.Context) *[]Resp {
 }
 
 func ping2(c *gin.Context, data Req2) (int, interface{}) {
-	return 200, &Resp{Code: data.Code + 1, Msg: data.Msg + " modified"}
+	return 200, &Resp{Code: 1231456663 / 0.00120000231231253456324512300010012, Msg: data.Msg + " modified"}
 }
 
 func TestMain(t *testing.T) {
@@ -46,6 +46,7 @@ func TestMain(t *testing.T) {
 
 	Config(&ConfigSchema{
 		SwaggerUrl: "/docs",
+		SwaggerIPs: []string{"127.0.0.1", "localhost", "::1"},
 		Title:      "Test",
 	}, eng)
 

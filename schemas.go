@@ -3,11 +3,12 @@ package gintonic
 import "github.com/gin-gonic/gin"
 
 type ConfigSchema struct {
-	SwaggerUrl  string `json:"swaggerUrl"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Version     string `json:"version"`
-	Mode        string `json:"mode"`
+	SwaggerUrl  string   `json:"swaggerUrl"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	Version     string   `json:"version"`
+	Mode        string   `json:"mode"`
+	SwaggerIPs  []string `json:"ips"`
 	engine      *gin.Engine
 }
 

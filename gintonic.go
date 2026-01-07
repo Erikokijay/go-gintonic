@@ -1,7 +1,9 @@
 package gintonic
 
 import (
+	"net/http"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -25,6 +27,18 @@ func Config(config *ConfigSchema, eng *gin.Engine) {
 	}
 
 	conf.engine = eng
+
+	if len(conf.SwaggerIPs) > 0 {
+		eng.Use(func(c *gin.Context) {
+
+			ip := c.ClientIP()
+
+			if !slices.Contains(conf.SwaggerIPs, ip) && strings.HasPrefix(c.Request.URL.Path, conf.SwaggerUrl) {
+				c.AbortWithStatus(http.StatusNotFound)
+				return
+			}
+		})
+	}
 
 	_, err := os.Stat("./docs")
 	if err != nil {
