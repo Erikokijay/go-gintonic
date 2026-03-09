@@ -1,6 +1,7 @@
 package gintonic
 
 import (
+	"encoding/base64"
 	"net/http"
 	"os"
 	"slices"
@@ -16,6 +17,25 @@ type Router struct {
 
 var conf *ConfigSchema
 
+func swaggerAuthEnabled(c *ConfigSchema) bool {
+	if len(c.SwaggerUsers) > 0 {
+		return true
+	}
+	return c.SwaggerUser != "" && c.SwaggerPassword != ""
+}
+
+func swaggerAuthValid(c *ConfigSchema, user, password string) bool {
+	for _, cred := range c.SwaggerUsers {
+		if cred.User == user && cred.Password == password {
+			return true
+		}
+	}
+	if c.SwaggerUser != "" && c.SwaggerPassword != "" && c.SwaggerUser == user && c.SwaggerPassword == password {
+		return true
+	}
+	return false
+}
+
 func Config(config *ConfigSchema, eng *gin.Engine) {
 	if config == nil {
 		conf = &ConfigSchema{
@@ -28,13 +48,42 @@ func Config(config *ConfigSchema, eng *gin.Engine) {
 
 	conf.engine = eng
 
+	if swaggerAuthEnabled(conf) {
+		eng.Use(func(c *gin.Context) {
+			if !strings.HasPrefix(c.Request.URL.Path, conf.SwaggerUrl) {
+				c.Next()
+				return
+			}
+			const prefix = "Basic "
+			auth := c.GetHeader("Authorization")
+			if !strings.HasPrefix(auth, prefix) {
+				c.Header("WWW-Authenticate", `Basic realm="Swagger"`)
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
+			decoded, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(auth, prefix))
+			if err != nil {
+				c.Header("WWW-Authenticate", `Basic realm="Swagger"`)
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
+			parts := strings.SplitN(string(decoded), ":", 2)
+			if len(parts) != 2 || !swaggerAuthValid(conf, parts[0], parts[1]) {
+				c.Header("WWW-Authenticate", `Basic realm="Swagger"`)
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
+			c.Next()
+		})
+	}
+
 	if len(conf.SwaggerIPs) > 0 {
 		eng.Use(func(c *gin.Context) {
 
 			ip := c.ClientIP()
 
 			if !slices.Contains(conf.SwaggerIPs, ip) && strings.HasPrefix(c.Request.URL.Path, conf.SwaggerUrl) {
-				c.AbortWithStatus(http.StatusNotFound)
+				c.Status(http.StatusNotFound)
 				return
 			}
 		})
@@ -71,6 +120,7 @@ func Group(path string, info ...GroupInfo) *Router {
 	return &Router{conf.engine.Group(path), gr}
 }
 
+// SubGroup - create subgroup of router. It will not add routeInfo to Swagger
 func (r *Router) SubGroup(path string, info ...RouteInfo) *Router {
 	return &Router{r.Group(path), GroupInfo{}}
 }

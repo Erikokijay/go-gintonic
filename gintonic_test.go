@@ -46,8 +46,12 @@ func TestMain(t *testing.T) {
 
 	Config(&ConfigSchema{
 		SwaggerUrl: "/docs",
-		SwaggerIPs: []string{"127.0.0.1", "localhost", "::1"},
+		SwaggerIPs: []string{"127.0.0.1"},
 		Title:      "Test",
+		SwaggerUsers: []SwaggerCredential{
+			{User: "admin", Password: "secret"},
+			{User: "dev", Password: "dev123"},
+		},
 	}, eng)
 
 	router := Group("/api", GroupInfo{

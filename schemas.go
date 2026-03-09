@@ -2,14 +2,23 @@ package gintonic
 
 import "github.com/gin-gonic/gin"
 
+// SwaggerCredential — пара логин/пароль для доступа к Swagger (Basic Auth).
+type SwaggerCredential struct {
+	User     string `json:"user"`
+	Password string `json:"password"`
+}
+
 type ConfigSchema struct {
-	SwaggerUrl  string   `json:"swaggerUrl"`
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
-	Version     string   `json:"version"`
-	Mode        string   `json:"mode"`
-	SwaggerIPs  []string `json:"ips"`
-	engine      *gin.Engine
+	SwaggerUrl      string              `json:"swaggerUrl"`
+	Title           string              `json:"title"`
+	Description     string              `json:"description"`
+	Version         string              `json:"version"`
+	Mode            string              `json:"mode"`
+	SwaggerIPs      []string            `json:"ips"`
+	SwaggerUser     string              `json:"swaggerUser"`     // устарело: один логин (если SwaggerUsers пуст)
+	SwaggerPassword string              `json:"swaggerPassword"` // устарело: один пароль
+	SwaggerUsers    []SwaggerCredential `json:"swaggerUsers"`    // список пар логин/пароль для разных пользователей
+	engine          *gin.Engine
 }
 
 type ResultsInfo map[int]interface{}
