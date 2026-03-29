@@ -39,8 +39,7 @@ func swaggerAuthValid(c *ConfigSchema, user, password string) bool {
 func Config(config *ConfigSchema, eng *gin.Engine) {
 	if config == nil {
 		conf = &ConfigSchema{
-			Mode:       gin.DebugMode,
-			SwaggerUrl: "/docs",
+			Mode: gin.DebugMode,
 		}
 	} else {
 		conf = config
@@ -96,8 +95,10 @@ func Config(config *ConfigSchema, eng *gin.Engine) {
 		}
 	}
 
-	eng.StaticFile(conf.SwaggerUrl, "./docs/swagger.html")
-	eng.StaticFile(conf.SwaggerUrl+"/openapi.json", "./docs/openapi.json")
+	if conf.SwaggerUrl != "" {
+		eng.StaticFile(conf.SwaggerUrl, "./docs/swagger.html")
+		eng.StaticFile(conf.SwaggerUrl+"/openapi.json", "./docs/openapi.json")
+	}
 }
 
 func Start(host string) {

@@ -3,6 +3,7 @@ package gintonic
 import (
 	"encoding/json"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"reflect"
@@ -10,6 +11,29 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+func isMultipartFile(t reflect.Type) bool {
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	return t == reflect.TypeOf((*multipart.File)(nil)).Elem() ||
+		t == reflect.TypeOf(multipart.FileHeader{})
+}
+
+func containsMultipartFile(t reflect.Type) bool {
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return false
+	}
+	for i := 0; i < t.NumField(); i++ {
+		if isMultipartFile(t.Field(i).Type) {
+			return true
+		}
+	}
+	return false
+}
 
 func generateSchema(t reflect.Type) interface{} {
 
@@ -38,6 +62,7 @@ func generateSchema(t reflect.Type) interface{} {
 		return nil
 	}
 
+	hasFile := containsMultipartFile(t)
 	numFields := t.NumField()
 	properties := make(map[string]interface{}, numFields)
 	requireds := []string{}
@@ -45,28 +70,54 @@ func generateSchema(t reflect.Type) interface{} {
 	for i := 0; i < numFields; i++ {
 		field := t.Field(i)
 		jsonTag := field.Tag.Get("json")
-
 		if spl := strings.Split(jsonTag, ","); len(spl) > 0 {
 			jsonTag = spl[0]
 		}
-		//form := field.Tag.Get("form")
 
-		if jsonTag != "" {
+		formTag := field.Tag.Get("form")
+		if spl := strings.Split(formTag, ","); len(spl) > 0 {
+			formTag = spl[0]
+		}
+
+		if isMultipartFile(field.Type) {
+			name := formTag
+			if name == "" {
+				name = jsonTag
+			}
+			if name == "" {
+				continue
+			}
+			properties[name] = map[string]interface{}{
+				"type":   "string",
+				"format": "binary",
+			}
+			if field.Tag.Get("binding") == "required" {
+				requireds = append(requireds, name)
+			}
+			continue
+		}
+
+		propName := jsonTag
+		if hasFile && formTag != "" {
+			propName = formTag
+		}
+
+		if propName != "" {
 			fieldType := field.Type
 			fieldKind := fieldType.Kind()
 			fieldTypeStr := strings.ReplaceAll(fieldKind.String(), ",omitempty", "")
 
 			if fieldKind == reflect.Struct {
-				properties[jsonTag] = generateSchema(fieldType)
+				properties[propName] = generateSchema(fieldType)
 			} else if fieldKind == reflect.Slice || fieldKind == reflect.Array {
 				fieldTypeStr = "array"
-				properties[jsonTag] = map[string]interface{}{
+				properties[propName] = map[string]interface{}{
 					"type":  fieldTypeStr,
 					"items": generateSchema(fieldType.Elem()),
 				}
 			} else if fieldKind == reflect.Map {
 				fieldTypeStr = "object"
-				properties[jsonTag] = map[string]interface{}{
+				properties[propName] = map[string]interface{}{
 					"type":                 fieldTypeStr,
 					"additionalProperties": generateSchema(fieldType.Elem()),
 				}
@@ -80,13 +131,13 @@ func generateSchema(t reflect.Type) interface{} {
 				if strings.Contains(fieldTypeStr, "float") {
 					fieldTypeStr = "number"
 				}
-				properties[jsonTag] = map[string]interface{}{
+				properties[propName] = map[string]interface{}{
 					"type": fieldTypeStr,
 				}
 			}
 
 			if field.Tag.Get("binding") == "required" {
-				requireds = append(requireds, jsonTag)
+				requireds = append(requireds, propName)
 			}
 		}
 	}
@@ -104,6 +155,9 @@ func generateParametres(t reflect.Type, isGet bool, path string) []parameter {
 	for i := range numFields {
 
 		field := t.Field(i)
+		if isMultipartFile(field.Type) {
+			continue
+		}
 		queryTag := field.Tag.Get("form")
 		if spl := strings.Split(queryTag, ","); len(spl) > 0 {
 			queryTag = spl[0]
@@ -358,11 +412,15 @@ func GenerateSwagger() {
 		}
 
 		if route.Method != "get" && route.Method != "delete" && route.InType != nil {
+			contentType := "application/json"
+			if containsMultipartFile(route.InType.(reflect.Type)) {
+				contentType = "multipart/form-data"
+			}
 
 			operation.RequestBody = &requestBody{
 				Required: true,
 				Content: map[string]mediaType{
-					"application/json": {
+					contentType: {
 						Schema: schema{"$ref": "#/components/schemas/" + route.InType.(reflect.Type).Name()},
 					},
 				},

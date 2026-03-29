@@ -2,6 +2,7 @@ package gintonic
 
 import (
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"testing"
 	"time"
@@ -18,9 +19,10 @@ type Resp struct {
 }
 
 type Req2 struct {
-	Code int    `form:"code" json:"code,omitempty" binding:"required"`
-	Msg  string `json:"msg" form:"msg"`
-	Bb   bool   `form:"bb" json:"bb"`
+	Code  int                   `form:"code" json:"code,omitempty" binding:"required"`
+	Msg   string                `json:"msg" form:"msg"`
+	Bb    bool                  `form:"bb" json:"bb"`
+	Image *multipart.FileHeader `form:"image"`
 }
 
 func (r *Req2) AutoValidate() error {
