@@ -82,7 +82,7 @@ func Config(config *ConfigSchema, eng *gin.Engine) {
 			ip := c.ClientIP()
 
 			if !slices.Contains(conf.SwaggerIPs, ip) && strings.HasPrefix(c.Request.URL.Path, conf.SwaggerUrl) {
-				c.Status(http.StatusNotFound)
+				c.AbortWithStatus(http.StatusNotFound)
 				return
 			}
 		})

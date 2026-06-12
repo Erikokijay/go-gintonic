@@ -8,9 +8,24 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
+
+var timeType = reflect.TypeOf(time.Time{})
+
+// schemaName returns the component schema name for a type, dereferencing
+// pointers and using the "Ar"+Elem convention for slices/arrays.
+func schemaName(t reflect.Type) string {
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	if t.Kind() == reflect.Slice || t.Kind() == reflect.Array {
+		return "Ar" + t.Elem().Name()
+	}
+	return t.Name()
+}
 
 func isMultipartFile(t reflect.Type) bool {
 	if t.Kind() == reflect.Ptr {
@@ -36,31 +51,65 @@ func containsMultipartFile(t reflect.Type) bool {
 }
 
 func generateSchema(t reflect.Type) interface{} {
+	if t == nil {
+		return map[string]interface{}{"type": "object"}
+	}
+	return generateSchemaRec(t, map[reflect.Type]bool{})
+}
+
+// generateSchemaRec walks a type and builds an OpenAPI schema. The visited set
+// tracks structs on the current path so self-referential / mutually-recursive
+// types (e.g. tree nodes, linked lists) terminate instead of recursing forever.
+func generateSchemaRec(t reflect.Type, visited map[reflect.Type]bool) interface{} {
+
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
 
 	schema := map[string]interface{}{
 		"type": "object",
 	}
 
+	// time.Time is a struct but should be represented as a string.
+	if t == timeType {
+		return map[string]interface{}{"type": "string", "format": "date-time"}
+	}
+
 	if strings.Contains(t.Kind().String(), "int") {
 		schema["type"] = "integer"
 		return schema
-	} else if t.Kind().String() == "bool" {
+	} else if t.Kind() == reflect.Bool {
 		schema["type"] = "boolean"
 		return schema
 	} else if strings.Contains(t.Kind().String(), "float") {
 		schema["type"] = "number"
 		return schema
+	} else if t.Kind() == reflect.String {
+		schema["type"] = "string"
+		return schema
 	}
 
 	if t.Kind() == reflect.Slice || t.Kind() == reflect.Array {
 		schema["type"] = "array"
-		schema["items"] = generateSchema(t.Elem())
+		schema["items"] = generateSchemaRec(t.Elem(), visited)
+		return schema
+	}
+
+	if t.Kind() == reflect.Map {
+		schema["additionalProperties"] = generateSchemaRec(t.Elem(), visited)
 		return schema
 	}
 
 	if t.Kind() != reflect.Struct {
 		return nil
 	}
+
+	// Cycle guard: if this struct is already on the current path, stop.
+	if visited[t] {
+		return map[string]interface{}{"type": "object"}
+	}
+	visited[t] = true
+	defer delete(visited, t)
 
 	hasFile := containsMultipartFile(t)
 	numFields := t.NumField()
@@ -69,6 +118,12 @@ func generateSchema(t reflect.Type) interface{} {
 
 	for i := 0; i < numFields; i++ {
 		field := t.Field(i)
+
+		// Skip unexported fields — they are not serialized.
+		if field.PkgPath != "" {
+			continue
+		}
+
 		jsonTag := field.Tag.Get("json")
 		if spl := strings.Split(jsonTag, ","); len(spl) > 0 {
 			jsonTag = spl[0]
@@ -77,6 +132,10 @@ func generateSchema(t reflect.Type) interface{} {
 		formTag := field.Tag.Get("form")
 		if spl := strings.Split(formTag, ","); len(spl) > 0 {
 			formTag = spl[0]
+		}
+
+		if jsonTag == "-" {
+			continue
 		}
 
 		if isMultipartFile(field.Type) {
@@ -103,32 +162,34 @@ func generateSchema(t reflect.Type) interface{} {
 		}
 
 		if propName != "" {
+			// Dereference pointer fields so *Struct / *int are described correctly.
 			fieldType := field.Type
+			for fieldType.Kind() == reflect.Ptr {
+				fieldType = fieldType.Elem()
+			}
 			fieldKind := fieldType.Kind()
-			fieldTypeStr := strings.ReplaceAll(fieldKind.String(), ",omitempty", "")
 
-			if fieldKind == reflect.Struct {
-				properties[propName] = generateSchema(fieldType)
+			if fieldType == timeType {
+				properties[propName] = map[string]interface{}{"type": "string", "format": "date-time"}
+			} else if fieldKind == reflect.Struct {
+				properties[propName] = generateSchemaRec(fieldType, visited)
 			} else if fieldKind == reflect.Slice || fieldKind == reflect.Array {
-				fieldTypeStr = "array"
 				properties[propName] = map[string]interface{}{
-					"type":  fieldTypeStr,
-					"items": generateSchema(fieldType.Elem()),
+					"type":  "array",
+					"items": generateSchemaRec(fieldType.Elem(), visited),
 				}
 			} else if fieldKind == reflect.Map {
-				fieldTypeStr = "object"
 				properties[propName] = map[string]interface{}{
-					"type":                 fieldTypeStr,
-					"additionalProperties": generateSchema(fieldType.Elem()),
+					"type":                 "object",
+					"additionalProperties": generateSchemaRec(fieldType.Elem(), visited),
 				}
 			} else {
+				fieldTypeStr := fieldKind.String()
 				if strings.Contains(fieldTypeStr, "int") {
 					fieldTypeStr = "integer"
-				}
-				if fieldTypeStr == "bool" {
+				} else if fieldTypeStr == "bool" {
 					fieldTypeStr = "boolean"
-				}
-				if strings.Contains(fieldTypeStr, "float") {
+				} else if strings.Contains(fieldTypeStr, "float") {
 					fieldTypeStr = "number"
 				}
 				properties[propName] = map[string]interface{}{
@@ -149,6 +210,14 @@ func generateSchema(t reflect.Type) interface{} {
 
 func generateParametres(t reflect.Type, isGet bool, path string) []parameter {
 	res := []parameter{}
+
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	// Query/form parameters only make sense for structs.
+	if t.Kind() != reflect.Struct {
+		return res
+	}
 
 	numFields := t.NumField()
 
@@ -247,16 +316,23 @@ func simpleWrapper(path string, handler interface{}, method string, configs ...i
 
 	haveOut := false
 	for _, conf := range configs {
+		if conf == nil {
+			continue
+		}
 		if reflect.TypeOf(conf).Name() == "ResultInfo" {
 			res := conf.(ResultInfo)
-			route.Responses[res.Code] = reflect.TypeOf(res.Output)
-			haveOut = true
+			if out := reflect.TypeOf(res.Output); out != nil {
+				route.Responses[res.Code] = out
+				haveOut = true
+			}
 
 		} else if reflect.TypeOf(conf).Name() == "ResultsInfo" {
 			res := conf.(ResultsInfo)
 			for code, out := range res {
-				route.Responses[code] = reflect.TypeOf(out)
-				haveOut = true
+				if rt := reflect.TypeOf(out); rt != nil {
+					route.Responses[code] = rt
+					haveOut = true
+				}
 			}
 
 		} else if reflect.TypeOf(conf).Name() == "RouteInfo" {
@@ -265,7 +341,13 @@ func simpleWrapper(path string, handler interface{}, method string, configs ...i
 	}
 
 	if handlerType.NumOut() == 1 {
-		route.Responses[200] = handlerType.Out(0).Elem()
+		out := handlerType.Out(0)
+		// Only dereference pointer returns (e.g. *Resp, *[]Resp); value
+		// returns must not call Elem(), which would panic.
+		if out.Kind() == reflect.Ptr {
+			out = out.Elem()
+		}
+		route.Responses[200] = out
 	} else if !haveOut {
 		route.Responses[200] = reflect.TypeOf("")
 	}
@@ -411,43 +493,39 @@ func GenerateSwagger() {
 			Tags:        route.Info.Tags,
 		}
 
-		if route.Method != "get" && route.Method != "delete" && route.InType != nil {
-			contentType := "application/json"
-			if containsMultipartFile(route.InType.(reflect.Type)) {
-				contentType = "multipart/form-data"
-			}
-
-			operation.RequestBody = &requestBody{
-				Required: true,
-				Content: map[string]mediaType{
-					contentType: {
-						Schema: schema{"$ref": "#/components/schemas/" + route.InType.(reflect.Type).Name()},
-					},
-				},
-			}
-		}
-
 		if route.InType != nil {
-			name := ""
-			if route.InType.(reflect.Type).Kind() == reflect.Slice {
-				name = "Ar" + route.InType.(reflect.Type).Elem().Name()
-			} else {
-				name = route.InType.(reflect.Type).Name()
+			inType := route.InType.(reflect.Type)
+			name := schemaName(inType)
+
+			if route.Method != "get" && route.Method != "delete" {
+				contentType := "application/json"
+				if containsMultipartFile(inType) {
+					contentType = "multipart/form-data"
+				}
+
+				operation.RequestBody = &requestBody{
+					Required: true,
+					Content: map[string]mediaType{
+						contentType: {
+							Schema: schema{"$ref": "#/components/schemas/" + name},
+						},
+					},
+				}
 			}
-			operation.Parameters = generateParametres(route.InType.(reflect.Type), route.Method == "get" || route.Method == "delete", route.Path)
-			openAPI.Components.Schemas[name] = generateSchema(route.InType.(reflect.Type))
+
+			operation.Parameters = generateParametres(inType, route.Method == "get" || route.Method == "delete", route.Path)
+			openAPI.Components.Schemas[name] = generateSchema(inType)
 		}
 
 		operation.Responses = map[string]response{}
 
 		for code, resp := range route.Responses {
 
-			name := ""
-			if resp.(reflect.Type).Kind() == reflect.Slice {
-				name = "Ar" + resp.(reflect.Type).Elem().Name()
-			} else {
-				name = resp.(reflect.Type).Name()
+			respType, ok := resp.(reflect.Type)
+			if !ok || respType == nil {
+				continue
 			}
+			name := schemaName(respType)
 
 			operation.Responses[fmt.Sprintf("%d", code)] = response{
 				Description: name,
@@ -457,7 +535,7 @@ func GenerateSwagger() {
 					},
 				},
 			}
-			openAPI.Components.Schemas[name] = generateSchema(resp.(reflect.Type))
+			openAPI.Components.Schemas[name] = generateSchema(respType)
 
 		}
 
