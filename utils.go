@@ -75,6 +75,10 @@ func generateSchemaRec(t reflect.Type, visited map[reflect.Type]bool) interface{
 		return map[string]interface{}{"type": "string", "format": "date-time"}
 	}
 
+	if t.Kind() == reflect.Interface {
+		return map[string]interface{}{}
+	}
+
 	if strings.Contains(t.Kind().String(), "int") {
 		schema["type"] = "integer"
 		return schema
@@ -115,6 +119,7 @@ func generateSchemaRec(t reflect.Type, visited map[reflect.Type]bool) interface{
 	numFields := t.NumField()
 	properties := make(map[string]interface{}, numFields)
 	requireds := []string{}
+	embedded := map[string]interface{}{}
 
 	for i := 0; i < numFields; i++ {
 		field := t.Field(i)
@@ -136,6 +141,28 @@ func generateSchemaRec(t reflect.Type, visited map[reflect.Type]bool) interface{
 
 		if jsonTag == "-" {
 			continue
+		}
+
+		if field.Anonymous && jsonTag == "" {
+			anon := field.Type
+			for anon.Kind() == reflect.Ptr {
+				anon = anon.Elem()
+			}
+
+			if anon.Kind() == reflect.Struct && anon != timeType {
+				if sub, ok := generateSchemaRec(anon, visited).(map[string]interface{}); ok {
+					if props, ok := sub["properties"].(map[string]interface{}); ok {
+						for name, prop := range props {
+							embedded[name] = prop
+						}
+					}
+					if req, ok := sub["required"].([]string); ok {
+						requireds = append(requireds, req...)
+					}
+				}
+
+				continue
+			}
 		}
 
 		if isMultipartFile(field.Type) {
@@ -183,6 +210,9 @@ func generateSchemaRec(t reflect.Type, visited map[reflect.Type]bool) interface{
 					"type":                 "object",
 					"additionalProperties": generateSchemaRec(fieldType.Elem(), visited),
 				}
+			} else if fieldKind == reflect.Interface {
+
+				properties[propName] = map[string]interface{}{}
 			} else {
 				fieldTypeStr := fieldKind.String()
 				if strings.Contains(fieldTypeStr, "int") {
@@ -200,6 +230,12 @@ func generateSchemaRec(t reflect.Type, visited map[reflect.Type]bool) interface{
 			if field.Tag.Get("binding") == "required" {
 				requireds = append(requireds, propName)
 			}
+		}
+	}
+
+	for name, prop := range embedded {
+		if _, ok := properties[name]; !ok {
+			properties[name] = prop
 		}
 	}
 
@@ -342,8 +378,7 @@ func simpleWrapper(path string, handler interface{}, method string, configs ...i
 
 	if handlerType.NumOut() == 1 {
 		out := handlerType.Out(0)
-		// Only dereference pointer returns (e.g. *Resp, *[]Resp); value
-		// returns must not call Elem(), which would panic.
+
 		if out.Kind() == reflect.Ptr {
 			out = out.Elem()
 		}
